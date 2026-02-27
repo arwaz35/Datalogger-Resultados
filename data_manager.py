@@ -1,0 +1,108 @@
+import json
+import os
+
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+MOTOS_FILE = os.path.join(DATA_DIR, 'motos.json')
+PILOTOS_FILE = os.path.join(DATA_DIR, 'pilotos.json')
+
+class DataManager:
+    def __init__(self):
+        self._ensure_files_exist()
+
+    def _ensure_files_exist(self):
+        if not os.path.exists(MOTOS_FILE):
+            with open(MOTOS_FILE, 'w') as f:
+                json.dump([], f)
+        if not os.path.exists(PILOTOS_FILE):
+            with open(PILOTOS_FILE, 'w') as f:
+                json.dump([], f)
+
+    def load_motos(self):
+        try:
+            with open(MOTOS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+
+    def save_motos(self, motos):
+        with open(MOTOS_FILE, 'w') as f:
+            json.dump(motos, f, indent=4)
+
+    def add_moto(self, moto_data):
+        motos = self.load_motos()
+        motos.append(moto_data)
+        self.save_motos(motos)
+
+    def update_moto(self, index, moto_data):
+        motos = self.load_motos()
+        if 0 <= index < len(motos):
+            motos[index] = moto_data
+            self.save_motos(motos)
+
+    def delete_moto(self, index):
+        motos = self.load_motos()
+        if 0 <= index < len(motos):
+            del motos[index]
+            self.save_motos(motos)
+
+    def load_pilotos(self):
+        try:
+            with open(PILOTOS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+
+    def save_pilotos(self, pilotos):
+        with open(PILOTOS_FILE, 'w') as f:
+            json.dump(pilotos, f, indent=4)
+
+    def add_piloto(self, nombre):
+        pilotos = self.load_pilotos()
+        if nombre not in pilotos: # Prevent duplicates
+            pilotos.append(nombre)
+            self.save_pilotos(pilotos)
+
+    def delete_piloto(self, nombre):
+        pilotos = self.load_pilotos()
+        if nombre in pilotos:
+            pilotos.remove(nombre)
+            self.save_pilotos(pilotos)
+
+    # --- RANKING METHODS ---
+    RANKING_FILE = os.path.join(DATA_DIR, 'ranking.json')
+
+    def load_ranking(self):
+        try:
+            if not os.path.exists(self.RANKING_FILE):
+                return []
+            with open(self.RANKING_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+
+    def save_ranking(self, data):
+        with open(self.RANKING_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+
+    def add_ranking_entry(self, entry):
+        """
+        Adds a single ranking entry.
+        entry: dict with keys matching the requirement.
+        """
+        ranking = self.load_ranking()
+        ranking.append(entry)
+        self.save_ranking(ranking)
+
+    def delete_ranking_entry(self, entry_to_delete):
+        """
+        Deletes a ranking entry that matches the provided dictionary.
+        """
+        ranking = self.load_ranking()
+        # Filter out the entry. Using list comprehension for simplicity.
+        # We assume exacta match of the dictionary.
+        new_ranking = [r for r in ranking if r != entry_to_delete]
+        
+        if len(new_ranking) < len(ranking):
+            self.save_ranking(new_ranking)
+            return True
+        return False

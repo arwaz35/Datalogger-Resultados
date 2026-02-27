@@ -1,0 +1,106 @@
+Nuevo programa de análisis.
+
+El programa del datalogger recopila datos a razón de 10Hz y guarda la siguiente información en un archivo separado por coma (,) o punto y coma (;).
+
+
+Hora,Satelites,Latitud,Longitud,Velocidad_GPS,Velocidad_Moto,Altitud,Accel_X,Accel_Y,RPM,TPS,Temperatura_Motor,Carga_Motor,Calidad,Bateria,Distancia,Pulsador,Distancia_Parcial,Promedio_Velocidad,Promedio_Aceleración
+
+
+Requerimientos del programa:
+- El programa debe identificar la columna pulsador cuando sea 100 y a partir de ahí, realizar diferentes acciones.
+- Si encuentra varios 100 en la columna pulsador, analiza esto como eventos independientes.
+- Las columnas de aceleración (Accel_X, Accel_Y) están en G, se deben transformar a m/s2 con la mayor precisión posible.
+- Los resultados se reportan en PDF.
+- El programa debe tener como almacenar los datos de las motocicletas, un modulo para añadir datos y donde almacenarlos, deben ser de fácil manejo y que se puedan editar fácilmente (en caso de requerirlo).
+Los datos requeridos son: Fecha, Nombre Comercial, Placa, Código Modelo, Cilindraje (cc), Peso (Kg), Potencia (Hp), Torque (Nm)
+- Además de almacenar los datos de las motos, debe tener otro modulo para almacenar los nombres de los pilotos, esto con el fin de hacer listas desplegables y seleccionarlos fácilmente en las diferentes pruebas.
+- El programa debe tener la capacidad de separar los archivos que se suben y los eventos que encuentra, debe generar un archivo nuevo en .csv con el nombre de la motocicleta y el piloto y todos los eventos que encuentre en ese archivo.
+
+
+
+Tipos de análisis y pruebas:
+1. Frenado:
+Referencia*
+La prueba de frenos se hace de la siguiente manera:
+- Velocidad inicial: se debe garantizar la velocidad antes de frenar, que la velocidad sea estable.
+- En motocicletas con clutch y marchas, se aplica el clutch para frenar, con el fin de eliminar el freno de motor.
+- En motocicletas semiautomáticas, se realiza la prueba en la ultima marcha.
+- En motocicletas automáticas, se realiza normal.
+Se recomienda realizar la prueba a dos velocidades 40km/h y 60km/h, pero el programa no debe limitarse a estas velocidades únicamente, también se podrían analizar otras velocidades.
+Se recomienda realiza la prueba de frenado con 3 pilotos, cada uno realiza multiples frenadas.
+Para determinar las mejores frenadas, se evalúa por distancia recorrida (columna "Distancia") la menor distancia es mejor.
+
+
+
+Programa:
+Evento: Se debe tener en cuenta que el pulsador = 100 es el punto cero, entonces se debe tomar los datos desde un segundo antes de ese punto hasta un segundo después de que la velocidad sea cero.
+
+Separacion de archivos: Se debe generar un archivo nuevo con el nombre de la motocicleta y el piloto y todos los eventos que encuentre en ese archivo.
+
+Grafica tipo 1: Se analiza la columna Velocidad_GPS (eje Y) contra el tiempo (eje X). Se debe identificar el punto exacto donde la moto comienza a frenar (basados en donde la columna pulsador sea 100) donde la velocidad empieza a descender punto a punto (es muy importante poder identificar bien este punto), esto con el fin de eliminar las falsas frenadas y hacer el análisis desde el punto correcto. El punto donde comienza a frenar realmente, se tomaría como tiempo cero, se coloca una línea (puntuada) roja y vertical y al final cuando la velocidad sea cero, también se coloca otra línea (puntuada) roja, esto con el fin de limitar y analizar las variables en el tramo de frenado. también se debe graficar 1 segundo antes y después de las líneas rojas, solo como referencia para las graficas, pero no se analizan estos datos.
+
+Las etiquetas de los datos en los gráficos deben ser las siguientes: en la primera línea roja, debe quedar registrada la Velocidad_GPS y en la segunda línea roja, se registran el tiempo, la distancia, y la aceleración promedio.
+
+Grafica tipo 2: Se analiza la Accel_X (eje Y) contra el tiempo (eje X). Y se calcula el promedio acumulado, punto a punto, para graficarlo también.
+Se debe poner dentro de la grafica el valor de la aceleración promedio.
+
+Tabla tipo resumen: esta seria la forma de la tabla para resumir los datos de las graficas.
+Evento  /  Distancia (m)  /  Tiempo (s)  /  Aceleración (m/s2)
+Frenado 1  /  xx.xx  /  xx.xx  /  max: xx.xx min: xx.xx prom: xx.xx
+Frenado 2  /  xx.xx  /  xx.xx  /  max: xx.xx min: xx.xx prom: xx.xx
+...
+
+
+El programa debe recibir hasta 3 archivos (a veces solo 2 o a veces solo 1 archivo) y trabajar dependiendo de la cantidad de archivos que se le suban, antes de cada archivo se podrá escribir el nombre del piloto (lista desplegable) y escribir el peso del piloto. También debe haber un espacio para escribir comentarios de la prueba.
+
+El programa debe identificar la velocidad inicial de cada uno de los eventos y asociar los intentos por tipo de velocidad, es decir, si tengo 3 intentos a 40km/h y otros 3 a 60km/h entonces asociar por velocidades para poder generar el resumen. para validar estas velocidades, se toma la velocidad inicial y un rango de mas o menos 8km/h.
+
+
+Si se sube 1 archivo:
+Para generar el reporte, el programa al inicio del PDF debe poner un titulo, como "Prueba de frenado del modelo (Nombre Comercial) ((Código modelo))" dar la información de la motocicleta, y añadir la información del piloto, así como un total del peso durante la prueba y también escribir los comentarios que se hayan escrito en el campo de comentarios.
+
+Se realiza una grafica tipo 1 de las 3 mejores pruebas de frenado, de cada rango de velocidad en un solo grafico, es decir, si hay 6 pruebas que entren en el rango de 40km/h, se toman las 3 primeras con la menor distancia, se pone un titulo de la velocidad evaluada y se grafican en uno solo, los otros 3 eventos se descartan. Esto con el fin de ver claramente las distancias de frenado en un solo grafico. Cada evento se pinta con un color distinto.
+Debajo del resumen de graficas se da una tabla tipo resumen.
+Si se encuentran eventos a otras velocidades se hace lo mismo ya descrito para esas velocidades.
+
+Luego se realiza una grafica tipo 1 de la mejor de las pruebas y abajo de esta una grafica tipo 2 de este mismo evento. Para terminar una tabla tipo resumen.
+Se hace igual para las otras velocidades.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
