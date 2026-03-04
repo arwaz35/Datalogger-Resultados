@@ -325,6 +325,21 @@ class AnalysisController:
         # We will collect pilots next, so wait to build filename
         
         filepath = "" # Placeholder
+        tipo_prueba_map = {
+            'braking': 'Frenado',
+            'acceleration': 'Aceleracion',
+            'climbing': 'Ascenso',
+            'recovery': 'Recuperacion'
+        }
+        prueba_name = tipo_prueba_map.get(preview_data['type'], 'Prueba')
+        
+        def clean(s): return "".join([c for c in str(s) if c.isalnum() or c in (' ', '-', '_')]).strip()
+        moto_str = clean(moto_info.get('Nombre Comercial', 'Moto'))
+        modelo_str = clean(moto_info.get('Código Modelo', 'Modelo'))
+        
+        # We will collect pilots next, so wait to build filename
+        
+        filepath = "" # Placeholder
         
         pilots_info = []
         seen_pilots = set()
