@@ -1,0 +1,22 @@
+[
+    {
+        "Nombre": "Pendiente Ascenso",
+        "Altitud (msnm)": "1453",
+        "Coordenadas (Lat, Lon)": "6.387362, -75.462399"
+    },
+    {
+        "Nombre": "Bogot\u00e1/Tocancip\u00e1",
+        "Altitud (msnm)": "2610",
+        "Coordenadas (Lat, Lon)": "4.964737, -73.951357"
+    },
+    {
+        "Nombre": "Santa F\u00e9 de Antioquia",
+        "Altitud (msnm)": "505",
+        "Coordenadas (Lat, Lon)": "6.508415, -75.826062"
+    },
+    {
+        "Nombre": "Doradal",
+        "Altitud (msnm)": "215",
+        "Coordenadas (Lat, Lon)": "5.899401, -74.696809"
+    }
+]

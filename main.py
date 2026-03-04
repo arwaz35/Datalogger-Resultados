@@ -4,6 +4,7 @@ import os
 import threading
 from data_manager import DataManager
 from analysis_controller import AnalysisController
+from version import VERSION
 
 # Import Modules
 from modules.braking_test import BrakingTest
@@ -21,8 +22,8 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("Sistema de Análisis Incol")
-        self.geometry("1100x900")
+        self.title(f"Sistema de Análisis Incol - v{VERSION}")
+        self.geometry("1100x1000")
         # Maximize window by default
         # self.after(0, lambda: self.state("zoomed"))
         
@@ -31,6 +32,7 @@ class App(ctk.CTk):
         
         self.active_module = None
         self.moto_values_map = []
+        self.lugar_values_map = []
         
         self.create_layouts()
         
@@ -47,6 +49,18 @@ class App(ctk.CTk):
         ctk.CTkButton(self.moto_frame, text="Nueva Moto", command=self.open_new_moto_window).pack(side="left", padx=10)
         ctk.CTkButton(self.moto_frame, text="Actualizar Lista", command=self.refresh_motos).pack(side="left", padx=10)
         ctk.CTkButton(self.moto_frame, text="Gestionar Pilotos", command=self.open_pilot_manager).pack(side="right", padx=20)
+        
+        # --- 1b. Lugar Selection (Fixed Top) ---
+        self.lugar_frame = ctk.CTkFrame(self)
+        self.lugar_frame.pack(fill="x", padx=10, pady=5)
+        
+        ctk.CTkLabel(self.lugar_frame, text="Lugar de Prueba", font=("Arial", 16, "bold")).pack(pady=5)
+        
+        self.lugar_combo = ctk.CTkComboBox(self.lugar_frame, values=["Seleccione Lugar..."], width=300)
+        self.lugar_combo.pack(side="left", padx=20, pady=10)
+        
+        ctk.CTkButton(self.lugar_frame, text="Nuevo Lugar", command=self.open_new_lugar_window).pack(side="left", padx=10)
+        ctk.CTkButton(self.lugar_frame, text="Actualizar Lugares", command=self.refresh_lugares).pack(side="left", padx=10)
         
         # --- 2. Ranking (Fixed Top) ---
         self.ranking_frame = ctk.CTkFrame(self)
@@ -111,16 +125,6 @@ class App(ctk.CTk):
         ctk.CTkLabel(env_grid, text="Temp. Suelo (°C):").grid(row=0, column=4, padx=5, pady=2)
         self.temp_ground_entry = ctk.CTkEntry(env_grid, width=60)
         self.temp_ground_entry.grid(row=0, column=5, padx=5, pady=2)
-        
-        # Viento Speed
-        ctk.CTkLabel(env_grid, text="Viento (m/s):").grid(row=0, column=6, padx=5, pady=2)
-        self.wind_speed_entry = ctk.CTkEntry(env_grid, width=60)
-        self.wind_speed_entry.grid(row=0, column=7, padx=5, pady=2)
-        
-        # Viento Dir
-        ctk.CTkLabel(env_grid, text="Dirección Viento:").grid(row=0, column=8, padx=5, pady=2)
-        self.wind_dir_combo = ctk.CTkComboBox(env_grid, values=["Favor", "Contra", "Lateral"], width=100)
-        self.wind_dir_combo.grid(row=0, column=9, padx=5, pady=2)
             
         # --- 6. Comments and Action (Common Footer) ---
         self.action_frame = ctk.CTkFrame(self)
@@ -139,6 +143,7 @@ class App(ctk.CTk):
         
         # Initialize
         self.refresh_motos()
+        self.refresh_lugares()
         
         # Set default module
         self.switch_module(BrakingTest)
@@ -152,6 +157,42 @@ class App(ctk.CTk):
         # Pass controller and data_manager to all modules for consistency
         self.active_module = module_class(self.module_container, self.controller, self.data_manager)
         self.active_module.pack(fill="both", expand=True)
+
+    def refresh_lugares(self):
+        lugares = self.data_manager.load_lugares()
+        values = [f"{l.get('Nombre','Unamed')}" for l in lugares]
+        if not values: values = ["Sin lugares registrados"]
+        self.lugar_combo.configure(values=values)
+        self.lugar_values_map = lugares
+
+    def open_new_lugar_window(self):
+        win = ctk.CTkToplevel(self)
+        win.title("Agregar Lugar de Prueba")
+        win.geometry("400x350")
+        win.attributes("-topmost", True)
+        
+        fields = ["Nombre", "Altitud (msnm)", "Coordenadas (Lat, Lon)"]
+        entries = {}
+        
+        for f in fields:
+            row = ctk.CTkFrame(win)
+            row.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(row, text=f).pack(side="left", padx=5)
+            e = ctk.CTkEntry(row)
+            e.pack(side="right", fill="x", expand=True, padx=5)
+            entries[f] = e
+            
+        def save():
+            data = {f: entries[f].get() for f in fields}
+            # Simple validation
+            if not data['Nombre']:
+                messagebox.showerror("Error", "El nombre es obligatorio.", parent=win)
+                return
+            self.data_manager.add_lugar(data)
+            self.refresh_lugares()
+            win.destroy()
+            
+        ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
 
     def refresh_motos(self):
         motos = self.data_manager.load_motos()
@@ -324,7 +365,7 @@ class App(ctk.CTk):
 
         # 1. Get Moto
         moto_str = self.moto_combo.get()
-        if moto_str == "Seleccione Moto...":
+        if moto_str == "Seleccione Moto..." or moto_str == "Sin motos registradas":
              messagebox.showerror("Error", "Seleccione una motocicleta.")
              return
         
@@ -334,13 +375,24 @@ class App(ctk.CTk):
             messagebox.showerror("Error", "Error identificando la moto seleccionada.")
             return
 
+        # 1b. Get Lugar
+        lugar_str = self.lugar_combo.get()
+        if lugar_str == "Seleccione Lugar..." or lugar_str == "Sin lugares registrados":
+             messagebox.showerror("Error", "Debe seleccionar un lugar de prueba.")
+             return
+             
+        try:
+            lugar_data = next(l for l in self.lugar_values_map if l.get('Nombre') == lugar_str)
+        except StopIteration:
+            messagebox.showerror("Error", "Error identificando el lugar seleccionado.")
+            return
+
         # 2. Get Env
         env_conditions = {
             'temp_amb': self.temp_amb_entry.get(),
             'humidity': self.humidity_entry.get(),
             'temp_ground': self.temp_ground_entry.get(),
-            'wind_speed': self.wind_speed_entry.get(),
-            'wind_dir': self.wind_dir_combo.get()
+            'lugar': lugar_data
         }
         
         # 3. Get Comments

@@ -71,18 +71,35 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 ### 📁 Archivos Modificados / Creados
 - `[NUEVO]` `preview_window.py`
 - `[NUEVO]` `docs/UI_PREVIEW_DESIGN.md`
+- `[NUEVO]` `version.py`
 - `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `analyzer.py`
+- `[MODIFICADO]` `main.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `plotter.py`
 - `[MODIFICADO]` `modules/braking_test.py`
 - `[MODIFICADO]` `modules/acceleration_0_80.py`
 - `[MODIFICADO]` `modules/climbing_test.py`
 - `[MODIFICADO]` `modules/recovery_test.py`
+
+### ✨ Nuevas Correcciones y Modificaciones (Misma Sesión)
+- Se eliminó la Velocidad y Dirección del Viento de la interfaz principal (`main.py`) y de los reportes PDF (`reporter.py`).
+- Se mejoró el contraste de las tablas en `PreviewWindow` (encabezado azul, fondo blanco).
+- Se corrigieron errores como `SettingWithCopyWarning` en `analyzer.py` y `table_segments is not defined` en `analysis_controller.py`.
+- Se estableció un estándar fijo para la exportación de archivos (tanto CSV como PDF): `(Prueba)_(Motocicleta)_(Codigo Modelo)_(Piloto)_(Fecha)`.
+- Se implementó un control de versiones a través de `version.py` (actualmente en **v1.1.0**). El título de la aplicación principal ahora muestra la versión actual, y los reportes PDF tienen la versión estampada en la esquina inferior derecha.
+
+### 📍 Nueva Función: Control de Lugares de Prueba (v1.1.0)
+- Se añadió un sistema de gestión de lugares en `data_manager.py` (guardado en `lugares.json`).
+- Nueva interfaz en `main.py` para seleccionar un lugar de prueba de una lista desplegable, junto con un botón para agregar nuevos lugares (Nombre, Altitud, Coordenadas).
+- Se implementó la validación estricta: es obligatorio seleccionar un lugar para poder generar reportes o visualizarlos.
+- Se actualizó la tabla de "Condiciones Ambientales" en `reporter.py` para incluir también los datos del lugar seleccionado.
 
 ### 💻 Comandos Ejecutados
 *(Refactorización de código sin instalación de nuevas dependencias)*
 
 ### ⏳ Pendientes
 - Ejecutar pruebas manuales y visuales para confirmar que el diseño del PreviewWindow soporta correctamente el flujo de trabajo del usuario.
-- Ajustar el tamaño y la distribución de imágenes si se ven comprimidas en la previsualización.
 
 ### 🚀 Próximos Pasos
 - Completar las pruebas con datos reales para dar por finalizada la integración de la previsualización.

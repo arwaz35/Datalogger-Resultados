@@ -112,7 +112,8 @@ class AnalysisController:
                 all_events.append(event_obj)
                 
                 # Export individual CSV
-                export_event_to_csv(event_obj, self.output_dir, moto_info, inp['pilot'])
+                lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
+                export_event_to_csv(event_obj, self.output_dir, moto_info, lugar_name, test_name="Frenado")
         
         # 2. Group by Speed Range (40, 60, etc.)
         # Logic: "toma la velocidad inicial y un rango de mas o menos 8km/h"
@@ -309,10 +310,21 @@ class AnalysisController:
         env_conditions = preview_data['env_conditions']
         sections = preview_data['sections']
         
-        filename = f"{moto_info.get('Nombre Comercial', 'Reporte')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = os.path.join(self.output_dir, filename)
+        tipo_prueba_map = {
+            'braking': 'Frenado',
+            'acceleration': 'Aceleracion',
+            'climbing': 'Ascenso',
+            'recovery': 'Recuperacion'
+        }
+        prueba_name = tipo_prueba_map.get(preview_data['type'], 'Prueba')
         
-        reporter = PDFReporter(filepath)
+        def clean(s): return "".join([c for c in str(s) if c.isalnum() or c in (' ', '-', '_')]).strip()
+        moto_str = clean(moto_info.get('Nombre Comercial', 'Moto'))
+        modelo_str = clean(moto_info.get('Código Modelo', 'Modelo'))
+        
+        # We will collect pilots next, so wait to build filename
+        
+        filepath = "" # Placeholder
         
         pilots_info = []
         seen_pilots = set()
@@ -320,6 +332,14 @@ class AnalysisController:
             if inp['pilot'] not in seen_pilots:
                 pilots_info.append({'name': inp['pilot'], 'weight': inp['weight']})
                 seen_pilots.add(inp['pilot'])
+                
+        lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
+        lugar_str = clean(lugar_name)
+        fecha_str = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{prueba_name}_{moto_str}_{modelo_str}_{lugar_str}_{fecha_str}.pdf"
+        filepath = os.path.join(self.output_dir, filename)
+        
+        reporter = PDFReporter(filepath)
                 
         # Depending on test type, set the title
         title = "Prueba de Rendimiento"
@@ -390,7 +410,8 @@ class AnalysisController:
                     all_events.append(event_obj)
                     
                     # Export individual CSV
-                    export_event_to_csv(event_obj, self.output_dir, moto_info, f"{inp['pilot']}_Accel_0_80_{i+1}")
+                    lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
+                    export_event_to_csv(event_obj, self.output_dir, moto_info, lugar_name, test_name="Aceleracion")
         
         if not all_events:
             return False, "No se encontraron eventos válidos de Aceleración 0-80 km/h."
@@ -547,12 +568,13 @@ class AnalysisController:
                         })
                         
                         # Export CSV
+                        lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
                         export_event_to_csv({
                             'df': evt_df, 
                             'metrics': metrics, 
                             'pilot': inp_data['pilot'],
                             'weight': inp_data['weight']
-                        }, self.output_dir, moto_info, f"{inp_data['pilot']}_Ascenso_{suffix}_{i+1}")
+                        }, self.output_dir, moto_info, lugar_name, test_name="Ascenso")
                         
                 return processed
             except Exception as e:

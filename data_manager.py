@@ -4,6 +4,7 @@ import os
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 MOTOS_FILE = os.path.join(DATA_DIR, 'motos.json')
 PILOTOS_FILE = os.path.join(DATA_DIR, 'pilotos.json')
+LUGARES_FILE = os.path.join(DATA_DIR, 'lugares.json')
 
 class DataManager:
     def __init__(self):
@@ -15,6 +16,9 @@ class DataManager:
                 json.dump([], f)
         if not os.path.exists(PILOTOS_FILE):
             with open(PILOTOS_FILE, 'w') as f:
+                json.dump([], f)
+        if not os.path.exists(LUGARES_FILE):
+            with open(LUGARES_FILE, 'w') as f:
                 json.dump([], f)
 
     def load_motos(self):
@@ -67,6 +71,29 @@ class DataManager:
         if nombre in pilotos:
             pilotos.remove(nombre)
             self.save_pilotos(pilotos)
+
+    # --- LUGARES METHODS ---
+    def load_lugares(self):
+        try:
+            with open(LUGARES_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+
+    def save_lugares(self, lugares):
+        with open(LUGARES_FILE, 'w') as f:
+            json.dump(lugares, f, indent=4)
+
+    def add_lugar(self, lugar_data):
+        lugares = self.load_lugares()
+        lugares.append(lugar_data)
+        self.save_lugares(lugares)
+
+    def delete_lugar(self, index):
+        lugares = self.load_lugares()
+        if 0 <= index < len(lugares):
+            del lugares[index]
+            self.save_lugares(lugares)
 
     # --- RANKING METHODS ---
     RANKING_FILE = os.path.join(DATA_DIR, 'ranking.json')

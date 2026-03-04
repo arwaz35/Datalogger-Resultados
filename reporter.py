@@ -49,21 +49,41 @@ class PDFReporter:
         
         # Environmental Conditions
         if env_conditions:
-            self.elements.append(Paragraph("<b>Condiciones Ambientales:</b>", self.styles['Normal']))
+            lugar = env_conditions.get('lugar', None)
+            
+            if lugar:
+                self.elements.append(Paragraph("<b>Condiciones Ambientales y Lugar de Prueba:</b>", self.styles['Normal']))
+            else:
+                self.elements.append(Paragraph("<b>Condiciones Ambientales:</b>", self.styles['Normal']))
+                
             self.elements.append(Spacer(1, 4))
             
-            env_data = [
-                ["Temp. Ambiente:", f"{env_conditions.get('temp_amb', '')} °C", "Humedad:", f"{env_conditions.get('humidity', '')} %"],
-                ["Temp. Suelo:", f"{env_conditions.get('temp_ground', '')} °C", "Viento:", f"{env_conditions.get('wind_speed', '')} m/s ({env_conditions.get('wind_dir', '')})"]
-            ]
-            
-            t_env = Table(env_data, colWidths=[col_lbl, col_val, col_lbl, col_val])
-            t_env.setStyle(TableStyle([
-                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-                ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
-                ('BACKGROUND', (2,0), (2,-1), colors.lightgrey),
-                ('PADDING', (0,0), (-1,-1), 6),
-            ]))
+            if lugar:
+                env_data = [
+                    ["Lugar:", f"{lugar.get('Nombre', '')}", "Temp. Ambiente:", f"{env_conditions.get('temp_amb', '')} °C"],
+                    ["Altitud:", f"{lugar.get('Altitud (msnm)', '')} msnm", "Humedad:", f"{env_conditions.get('humidity', '')} %"],
+                    ["Coordenadas:", f"{lugar.get('Coordenadas (Lat, Lon)', '')}", "Temp. Suelo:", f"{env_conditions.get('temp_ground', '')} °C"]
+                ]
+                t_env = Table(env_data, colWidths=[col_lbl, col_val, col_lbl, col_val])
+                t_env.setStyle(TableStyle([
+                    ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                    ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+                    ('BACKGROUND', (2,0), (2,-1), colors.lightgrey),
+                    ('PADDING', (0,0), (-1,-1), 6),
+                ]))
+            else:
+                env_data = [
+                    ["Temp. Ambiente:", f"{env_conditions.get('temp_amb', '')} °C"],
+                    ["Humedad:", f"{env_conditions.get('humidity', '')} %"],
+                    ["Temp. Suelo:", f"{env_conditions.get('temp_ground', '')} °C"]
+                ]
+                t_env = Table(env_data, colWidths=[col_lbl, col_val])
+                t_env.setStyle(TableStyle([
+                    ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                    ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+                    ('PADDING', (0,0), (-1,-1), 6),
+                ]))
+                
             self.elements.append(t_env)
             self.elements.append(Spacer(1, 12))
         
@@ -108,7 +128,17 @@ class PDFReporter:
 
     def build(self):
         try:
-            self.doc.build(self.elements)
+            from version import VERSION
+            
+            def add_version_footer(canvas, doc):
+                canvas.saveState()
+                canvas.setFont('Helvetica', 8)
+                canvas.setFillColor(colors.gray)
+                # Bottom right corner
+                canvas.drawRightString(doc.pagesize[0] - 0.3*inch, 0.3*inch, f"Sistema Incol v{VERSION}")
+                canvas.restoreState()
+                
+            self.doc.build(self.elements, onFirstPage=add_version_footer, onLaterPages=add_version_footer)
             return True
         except Exception as e:
             print(f"Error building PDF: {e}")
