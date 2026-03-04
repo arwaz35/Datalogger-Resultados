@@ -248,31 +248,24 @@ def calculate_metrics(event_df, start_idx, end_idx):
         'end_idx': end_idx
     }
 
-def export_event_to_csv(event, output_dir, moto_info, pilot_name):
+def export_event_to_csv(event, output_dir, moto_info, pilot_name, test_name="Prueba"):
     """
     Exports a single event to a CSV file.
-    Format: "NombreComercial_CodigoModelo_Placa_NombrePiloto_EventX.csv"
+    Format: "(Prueba)_(Motocicleta)_(Codigo Modelo)_(Piloto)_(Fecha).csv"
     """
     try:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
-        # Construct filename
-        # Clean strings to be file-safe
         def clean(s): return "".join([c for c in str(s) if c.isalnum() or c in (' ', '-', '_')]).strip()
         
-        moto_str = f"{clean(moto_info.get('Nombre Comercial', 'Moto'))}_{clean(moto_info.get('Código Modelo', ''))}_{clean(moto_info.get('Placa', ''))}"
+        moto_str = clean(moto_info.get('Nombre Comercial', 'Moto'))
+        modelo_str = clean(moto_info.get('Código Modelo', 'Modelo'))
         pilot_str = clean(pilot_name)
+        test_str = clean(test_name)
+        fecha_str = pd.Timestamp.now().strftime('%Y%m%d')
         
-        # We might need an event index or identifier if strictly one file per event?
-        # Requirement: "Debe generar un archivo nuevo ... y todos los eventos que encuentre en ese archivo"
-        # Wait, "todos los eventos que encuentre en ese archivo" implies ONE output CSV containing ALL events?
-        # "Se separan los eventos de cada archivo en archivos diferentes... as los archivo quedan con el nombre de la motocicleta y el piloto"
-        # Be careful: "un archivo nuevo ... y todos los eventos" vs "archivos diferentes".
-        # Re-reading: "generar un archivo nuevo en .csv con el nombre de la motocicleta y el piloto y todos los eventos que encuentre en ese archivo."
-        # This implies ONE CSV per INPUT file (or per session), containing the filtered events.
-        
-        filename = f"{moto_str}_{pilot_str}.csv"
+        filename = f"{test_str}_{moto_str}_{modelo_str}_{pilot_str}_{fecha_str}.csv"
         filepath = os.path.join(output_dir, filename)
         
         # If the file exists, maybe we append? Or overwrite? 

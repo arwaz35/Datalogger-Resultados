@@ -53,15 +53,15 @@ class PDFReporter:
             self.elements.append(Spacer(1, 4))
             
             env_data = [
-                ["Temp. Ambiente:", f"{env_conditions.get('temp_amb', '')} °C", "Humedad:", f"{env_conditions.get('humidity', '')} %"],
-                ["Temp. Suelo:", f"{env_conditions.get('temp_ground', '')} °C", "Viento:", f"{env_conditions.get('wind_speed', '')} m/s ({env_conditions.get('wind_dir', '')})"]
+                ["Temp. Ambiente:", f"{env_conditions.get('temp_amb', '')} °C"],
+                ["Humedad:", f"{env_conditions.get('humidity', '')} %"],
+                ["Temp. Suelo:", f"{env_conditions.get('temp_ground', '')} °C"]
             ]
             
-            t_env = Table(env_data, colWidths=[col_lbl, col_val, col_lbl, col_val])
+            t_env = Table(env_data, colWidths=[col_lbl, col_val])
             t_env.setStyle(TableStyle([
                 ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
                 ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
-                ('BACKGROUND', (2,0), (2,-1), colors.lightgrey),
                 ('PADDING', (0,0), (-1,-1), 6),
             ]))
             self.elements.append(t_env)

@@ -111,16 +111,6 @@ class App(ctk.CTk):
         ctk.CTkLabel(env_grid, text="Temp. Suelo (°C):").grid(row=0, column=4, padx=5, pady=2)
         self.temp_ground_entry = ctk.CTkEntry(env_grid, width=60)
         self.temp_ground_entry.grid(row=0, column=5, padx=5, pady=2)
-        
-        # Viento Speed
-        ctk.CTkLabel(env_grid, text="Viento (m/s):").grid(row=0, column=6, padx=5, pady=2)
-        self.wind_speed_entry = ctk.CTkEntry(env_grid, width=60)
-        self.wind_speed_entry.grid(row=0, column=7, padx=5, pady=2)
-        
-        # Viento Dir
-        ctk.CTkLabel(env_grid, text="Dirección Viento:").grid(row=0, column=8, padx=5, pady=2)
-        self.wind_dir_combo = ctk.CTkComboBox(env_grid, values=["Favor", "Contra", "Lateral"], width=100)
-        self.wind_dir_combo.grid(row=0, column=9, padx=5, pady=2)
             
         # --- 6. Comments and Action (Common Footer) ---
         self.action_frame = ctk.CTkFrame(self)
@@ -338,9 +328,7 @@ class App(ctk.CTk):
         env_conditions = {
             'temp_amb': self.temp_amb_entry.get(),
             'humidity': self.humidity_entry.get(),
-            'temp_ground': self.temp_ground_entry.get(),
-            'wind_speed': self.wind_speed_entry.get(),
-            'wind_dir': self.wind_dir_combo.get()
+            'temp_ground': self.temp_ground_entry.get()
         }
         
         # 3. Get Comments
