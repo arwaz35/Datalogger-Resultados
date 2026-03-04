@@ -143,9 +143,9 @@ def refine_start_point(event_df, trigger_time_idx=None):
         s_start = max(0, trigger_pos - 20)
         s_end = min(len(df), trigger_pos + 20)
         
-        search_slice = df.iloc[s_start:s_end]
-        
         # 1. Find point of Maximum Deceleration (Minimum delta_V)
+        search_slice = df.iloc[s_start:s_end].copy()
+        
         if search_slice['delta_V'].isnull().all():
              return event_df.index[0]
              
@@ -613,7 +613,7 @@ def calculate_climbing_metrics(event_df, start_idx=None, end_idx=None):
                 
                 # Accel Cumulative (0 to this point)
                 # Slice phase from 0 to current
-                sub_phase = phase.loc[:idx]
+                sub_phase = phase.loc[:idx].copy()
                 if 'Accel_X_ms2' in sub_phase.columns:
                     acc_cum = sub_phase['Accel_X_ms2'].mean()
                 else:

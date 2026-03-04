@@ -11,11 +11,12 @@ class AnalysisController:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-    def process_data(self, inputs, moto_info, comments, env_conditions=None):
+    def evaluate_data(self, inputs, moto_info, comments, env_conditions=None):
 
         """
         inputs: List of dicts [{'filepath': str, 'pilot': str, 'weight': str}]
         env_conditions: dict with keys 'temp_amb', 'humidity', 'temp_ground', 'wind_speed', 'wind_dir'
+        Returns: success_bool, data_to_preview_or_error_msg
         """
         all_events = []
         
@@ -177,48 +178,22 @@ class AnalysisController:
                 # print(f"Discarding event aiming for {nominal}: Unstable approach [{app_min:.1f}, {app_max:.1f}]")
                 pass
             
-        # 3. Generate Report
-        filename = f"{moto_info.get('Nombre Comercial', 'Reporte')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = os.path.join(self.output_dir, filename)
-        
-        reporter = PDFReporter(filepath)
-        
-        # Get unique pilots info
-        pilots_info = []
-        seen_pilots = set()
-        for inp in inputs:
-            if inp['pilot'] not in seen_pilots:
-                pilots_info.append({'name': inp['pilot'], 'weight': inp['weight']})
-                seen_pilots.add(inp['pilot'])
-                
-        reporter.add_header(moto_info, pilots_info, comments, env_conditions)
-        
-        sorted_speeds = sorted(grouped_events.keys())
+        # --- PREVIEW SECTIONS PREPARATION ---
+        sections = []
         
         # --- RANKING LOGIC ---
-        # Requirement: Save ranking only if 3 files (inputs) are processed
+        ranking_entries = []
         if len(inputs) >= 3:
-            # We need to extract best event for 40km/h and 60km/h
-            from data_manager import DataManager
-            dm = DataManager()
-            
-            # Helper to find best event in a nominal group
             def get_best_event(nominal_speed):
                 if nominal_speed in grouped_events:
                     events = grouped_events[nominal_speed]
                     if events:
-                        # Best is min distance
                         return min(events, key=lambda x: x['metrics']['dist_m'])
                 return None
 
-            # Process 40 and 60
             for target_speed in [40, 60]:
                 best_evt = get_best_event(target_speed)
                 if best_evt:
-                    # Construct Entry
-                    # "Fecha, Nombre Comercial, Código Modelo, Placa, Peso Moto, Piloto, Peso Piloto, Env Conditions, Results"
-                    
-                    # Calculate Total Weight
                     try:
                         moto_w = float(moto_info.get('Peso (Kg)', 0))
                         pilot_w = float(best_evt['weight'])
@@ -244,49 +219,33 @@ class AnalysisController:
                             'initial_speed': best_evt['initial_speed']
                         }
                     }
-                    dm.add_ranking_entry(entry)
+                    ranking_entries.append(entry)
 
+        sorted_speeds = sorted(grouped_events.keys())
+        
         for speed in sorted_speeds:
             events = grouped_events[speed]
             if not events: continue
             
-            reporter.add_section(f"Análisis de Frenado - {speed} km/h")
-            
-            # Filter best events based on Distance (metrics['dist_m'])
-            # Logic varies by number of inputs (pilots/files)
-            
-            # If 1 file (single pilot logic):
-            # "Se realiza una grafica tipo 1 de los 3 mejores eventos... las 3 primeras con la menor distancia"
-            # If multiple files (multi pilot logic):
-            # "con el mejor evento de cada piloto"
-            
+            # --- Combined Analysis ---
             num_files = len(inputs)
-            
             selected_events_for_combined = []
-            
             if num_files == 1:
-                # Top 3 total
                 sorted_by_dist = sorted(events, key=lambda x: x['metrics']['dist_m'])
                 selected_events_for_combined = sorted_by_dist[:3]
             else:
-                # Best per pilot
-                # Group by pilot
                 pilot_map = {}
                 for e in events:
                     p = e['pilot']
                     if p not in pilot_map: pilot_map[p] = []
                     pilot_map[p].append(e)
-                
                 for p, p_events in pilot_map.items():
                     best = min(p_events, key=lambda x: x['metrics']['dist_m'])
                     selected_events_for_combined.append(best)
             
-            # Generated Combined Plot (Type 1)
             img_buf = Plotter.plot_speed_vs_time(selected_events_for_combined, f"Velocidad vs Tiempo ({speed} km/h)")
-            reporter.add_image(img_buf)
             
-            # Table Summary for Combined
-            table_data = [['Evento', 'Distancia (m)', 'Tiempo (s)', 'Acel Prom (m/s²)']]
+            table_data_combined = [['Evento', 'Distancia (m)', 'Tiempo (s)', 'Acel Prom (m/s²)']]
             for i, ev in enumerate(selected_events_for_combined):
                 m = ev['metrics']
                 row = [
@@ -295,29 +254,14 @@ class AnalysisController:
                     f"{m['time_s']:.2f}",
                     f"{m['avg_acc']:.2f}"
                 ]
-                table_data.append(row)
-            reporter.add_table(table_data)
-            
-            reporter.add_page_break()
-            
-            # Individual Best Event Analysis
-            # "Luego se realiza una grafica tipo 1 de la mejor de las pruebas y abajo ... una grafica tipo 2"
-            # For 1 file: Best of the top 3 (which is index 0 of sorted)
-            # For 2+ files: "Grafica tipo 1 con el mejor de todos los eventos de los pilotos" -> Global best
-            
+                table_data_combined.append(row)
+                
+            # --- Single Best Analysis ---
             global_best = min(events, key=lambda x: x['metrics']['dist_m'])
             
-            reporter.add_section(f"Mejor Evento Global ({speed} km/h) - {global_best['pilot']}")
-            
-            # Type 1 for Single
             img_buf1 = Plotter.plot_speed_vs_time([global_best], "Velocidad vs Tiempo (Mejor Evento)")
-            reporter.add_image(img_buf1)
-            
-            # Type 2 for Single
             img_buf2 = Plotter.plot_accel_vs_time(global_best, "Aceleración vs Tiempo")
-            reporter.add_image(img_buf2, height=2.5*inch)
             
-            # Summary Table for this single event
             m = global_best['metrics']
             single_table = [
                 ['Métrica', 'Valor'],
@@ -326,20 +270,94 @@ class AnalysisController:
                 ['Aceleración Prom', f"{m['avg_acc']:.2f} m/s²"],
                 ['Velocidad Inicial', f"{global_best['initial_speed']:.2f} km/h"]
             ]
-            reporter.add_table(single_table)
             
+            sections.append({
+                "title": f"Frenado a {speed} km/h - Resumen ({len(selected_events_for_combined)} eventos)",
+                "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
+                "table_data": table_data_combined
+            })
+            
+            sections.append({
+                "title": f"Frenado a {speed} km/h - Mejor Evento ({global_best['pilot']})",
+                "images": [
+                    img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1, 
+                    img_buf2.getvalue() if hasattr(img_buf2, 'getvalue') else img_buf2
+                ],
+                "table_data": single_table
+            })
+
+        # Save the dataset for the PDF generation
+        preview_data = {
+            "type": "braking",
+            "moto_info": moto_info,
+            "inputs": inputs,
+            "comments": comments,
+            "env_conditions": env_conditions,
+            "sections": sections,
+            "ranking_entries": ranking_entries
+        }
+        
+        return True, preview_data
+
+    def generate_pdf(self, preview_data):
+        """
+        Generates the PDF based on the preview data prepared by evaluate tools.
+        """
+        moto_info = preview_data['moto_info']
+        inputs = preview_data['inputs']
+        comments = preview_data['comments']
+        env_conditions = preview_data['env_conditions']
+        sections = preview_data['sections']
+        
+        filename = f"{moto_info.get('Nombre Comercial', 'Reporte')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = os.path.join(self.output_dir, filename)
+        
+        reporter = PDFReporter(filepath)
+        
+        pilots_info = []
+        seen_pilots = set()
+        for inp in inputs:
+            if inp['pilot'] not in seen_pilots:
+                pilots_info.append({'name': inp['pilot'], 'weight': inp['weight']})
+                seen_pilots.add(inp['pilot'])
+                
+        # Depending on test type, set the title
+        title = "Prueba de Rendimiento"
+        if preview_data['type'] == "braking":
+            title = f"Prueba de frenado del modelo {moto_info.get('Nombre Comercial', '')}"
+            
+        reporter.add_header(moto_info, pilots_info, comments, env_conditions, title=title)
+        
+        for sec in sections:
+            reporter.add_section(sec['title'])
+            
+            for img_bytes in sec.get('images', []):
+                # Import io locally for reading bytes
+                import io
+                reporter.add_image(io.BytesIO(img_bytes))
+                
+            if sec.get('table_data'):
+                # Pop the header if present to pass separately or pass together
+                table = sec['table_data']
+                reporter.add_table(table)
+                
             reporter.add_page_break()
             
         success = reporter.build()
-        if success:
-             # Open folder?
-             pass
+        
+        if success and preview_data.get('ranking_entries'):
+            from data_manager import DataManager
+            dm = DataManager()
+            for entry in preview_data['ranking_entries']:
+                dm.add_ranking_entry(entry)
+
         return success, filepath
 
-    def process_acceleration_0_80(self, inputs, moto_info, comments, env_conditions=None):
+    def evaluate_acceleration_0_80(self, inputs, moto_info, comments, env_conditions=None):
         """
         Processes Acceleration 0-80 km/h test.
         inputs: List of dicts (usually single file)
+        Returns: success_bool, data_to_preview_or_error_msg
         """
         from analyzer import extract_acceleration_events, refine_acceleration_start, calculate_acceleration_metrics, export_event_to_csv
         
@@ -385,27 +403,13 @@ class AnalysisController:
         top_3_events = all_events[:3]
         best_event = all_events[0]
         
-        # 3. Generate Report
-        filename = f"Accel_0_80_{moto_info.get('Nombre Comercial', 'Moto')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = os.path.join(self.output_dir, filename)
+        # --- PREVIEW SECTIONS PREPARATION ---
+        sections = []
         
-        reporter = PDFReporter(filepath)
-        
-        # Header
-        pilots_info = [{'name': inputs[0]['pilot'], 'weight': inputs[0]['weight']}]
-        reporter.add_header(moto_info, pilots_info, comments, env_conditions, title="Prueba de Aceleración 0 - 80 km/h")
-        
-        reporter.add_section("Resumen: 3 Mejores Eventos")
-        
-        # Combined Graph (Speed vs Time)
-        # Need to implement plot_acceleration_0_80_combined in Plotter
-        # For now, reuse plot_speed_vs_time but maybe custom?
-        # Requirement: "etiquetas... linea cero velocidad inicial... linea final tiempo, vel final, acel prom, dist"
+        # Summary 3 Best Events
         img_buf = Plotter.plot_acceleration_comparison(top_3_events, "Comparativa: Velocidad vs Tiempo (Top 3)")
-        reporter.add_image(img_buf)
         
-        # Summary Table
-        table_data = [['Evento', 'Distancia (m)', 'Top RPM', 'Tiempo (s)', 'Acel Prom (m/s²)', 'Vel Final (km/h)']]
+        table_data_summary = [['Evento', 'Distancia (m)', 'Top RPM', 'Tiempo (s)', 'Acel Prom (m/s²)', 'Vel Final (km/h)']]
         for i, ev in enumerate(top_3_events):
             m = ev['metrics']
             row = [
@@ -416,133 +420,106 @@ class AnalysisController:
                 f"{m['avg_acc']:.2f}",
                 f"{m['v_final']:.2f}"
             ]
-            table_data.append(row)
-        reporter.add_table(table_data)
+            table_data_summary.append(row)
+            
+        sections.append({
+            "title": "Aceleración 0-80 km/h - Resumen 3 Mejores",
+            "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
+            "table_data": table_data_summary
+        })
         
-        reporter.add_page_break()
-        
-        # 4. Detailed Analysis of Best Event
-        reporter.add_section(f"Mejor Evento: Evento {best_event['id']} ({best_event['pilot']})")
-        
-        # Detailed Graph 1: Speed vs Time with markers 0, 20, 40, 60, 80
+        # Best Event Details
         img_detail_v = Plotter.plot_acceleration_detailed(best_event, "Análisis Detallado: Velocidad vs Tiempo")
-        reporter.add_image(img_detail_v)
-        
-        # Detailed Graph 2: Accel vs Time
         img_detail_a = Plotter.plot_accel_vs_time(best_event, "Aceleración Promedio vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
-        
-        # Detailed Graph 3: RPM vs Time
         img_detail_rpm = Plotter.plot_rpm_vs_time(best_event, "RPM vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
         
-        # Reorder: Vel -> RPM -> Accel -> Table
-        # We already added Vel. Now add RPM, then Accel.
-        # Use height=2.3*inch to match aspect ratio of (12, 3.5) approx
-        reporter.add_image(img_detail_rpm, height=1.9*inch)
-        reporter.add_image(img_detail_a, height=1.9*inch)
+        table_segments = [
+            ["Tramo (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]
+        ]
         
-        # Detailed Metrics Table (Segments)
-        # We need to calculate checks for 0-20, 20-40, 40-60, 60-80
-        # Calculate these on the fly or in analyzer
-        
-        # Segment Analysis Helper
-        from analyzer import calculate_acceleration_metrics
-        segments = [(0,20), (20,40), (40,60), (60,80)]
-        seg_metrics = []
-        
-        # For segment calculation, we need start/end of that specific segment
-        # We can reuse calculate_acceleration_metrics but need to find new start/end indices relative to the event
-        
-        # Find 0 start
-        base_start = best_event['metrics']['start_idx']
-        
-        table_segments = [['Segmento', 'Tiempo (s)', 'Top RPM', 'Distancia (m)', 'Acel Prom (m/s²)']]
-        
-        for v1, v2 in segments:
-            # Find index where speed >= v1 (start of seg)
-            # Find index where speed >= v2 (end of seg)
-            df = best_event['df']
+        df = best_event['df']
+        start_idx = best_event['metrics']['start_idx']
+        try:
+            start_pos = df.index.get_loc(start_idx)
+        except:
+            start_pos = 0
             
-            # Start search from base_start
-            sub = df.loc[base_start:]
+        sub = df.iloc[start_pos:]
+        
+        benchmarks = [0, 20, 40, 60, 80]
+        for idx_b in range(len(benchmarks)-1):
+            v1 = benchmarks[idx_b]
+            v2 = benchmarks[idx_b+1]
             
-            # Find v1
             if v1 == 0:
-                s_idx = base_start
+                s_idx = sub.index[0]
             else:
-                s_candidates = sub[sub['Velocidad_GPS'] >= v1]
-                if s_candidates.empty: continue
-                s_idx = s_candidates.index[0]
+                c1 = sub[sub['Velocidad_GPS'] >= v1]
+                if c1.empty: continue
+                s_idx = c1.index[0]
                 
-            # Find v2
-            # search from s_idx
-            sub2 = df.loc[s_idx:]
-            e_candidates = sub2[sub2['Velocidad_GPS'] >= v2]
-            if e_candidates.empty: continue
-            e_idx = e_candidates.index[0]
+            sub2 = sub.loc[s_idx:]
+            c2 = sub2[sub2['Velocidad_GPS'] >= v2]
+            if c2.empty: continue
+            e_idx = c2.index[0]
             
-            # Calc metrics
-            # calc from s_idx to e_idx
-            
-            # Time
-            t = (df.index.get_loc(e_idx) - df.index.get_loc(s_idx)) * 0.1
-            
-            # Dist
-            if 'Distancia' in df.columns:
-                d = df.loc[e_idx, 'Distancia'] - df.loc[s_idx, 'Distancia']
-            else:
-                d = 0 # fallback ignored for now
-                
-            # Accel (Sensor Average)
             seg_slice = df.loc[s_idx:e_idx]
-            if 'Accel_X_ms2' in seg_slice.columns:
-                a = seg_slice['Accel_X_ms2'].mean()
-            else:
-                # Fallback to GPS
-                if t > 0:
-                    a = ((v2/3.6) - (v1/3.6)) / t
-                else:
-                    a = 0
+            t_seg = (df.index.get_loc(e_idx) - df.index.get_loc(s_idx)) * 0.1
+            d_start = df.loc[s_idx, 'Distancia'] if 'Distancia' in df else 0
+            d_end = df.loc[e_idx, 'Distancia'] if 'Distancia' in df else 0
+            d_seg = max(0, d_end - d_start)
+            a_seg = seg_slice['Accel_X_ms2'].mean() if 'Accel_X_ms2' in seg_slice else 0
+            rpm_seg = seg_slice['RPM'].max() if 'RPM' in seg_slice else 0
             
-            # Top RPM in Segment
-            # Slice from s_idx to e_idx
-            # Need strict slice
-            seg_slice = df.loc[s_idx:e_idx]
-            if 'RPM' in seg_slice.columns:
-                top_r = seg_slice['RPM'].max()
-            else:
-                top_r = 0
-                
             table_segments.append([
-                f"{v1}-{v2} km/h",
-                f"{t:.2f}",
-                f"{int(top_r)}",
-                f"{d:.2f}",
-                f"{a:.2f}"
+                f"{v1}-{v2}", f"{t_seg:.2f}", f"{d_seg:.2f}", f"{a_seg:.2f}", f"{int(rpm_seg)}"
             ])
-            
-        reporter.add_table(table_segments)
         
-        # 5. 4-Graph Grid (Segment Graphs)
-        # Requirement: "graficas pequeñas, que quepan 4 por hoja... 0-20, 20-40..."
-        # We need to generate 4 plots and put them in a grid.
-        # Plotter needs a method to generate a figure we can save to image.
+        sections.append({
+            "title": f"Mejor Evento - Detalle: Evento {best_event['id']} ({best_event['pilot']})",
+            "images": [
+                img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
+                img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm,
+                img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a
+            ],
+            "table_data": table_segments
+        })
         
-        reporter.add_page_break()
-        reporter.add_section("Análisis por Tramos: 0 - 40 km/h")
+        # Segments Detailed Plots
         img_seg1 = Plotter.plot_segment_group(best_event, [(0,20), (20,40)], "Tramos 0-20 y 20-40 km/h")
-        reporter.add_image(img_seg1)
-        
-        reporter.add_page_break()
-        reporter.add_section("Análisis por Tramos: 40 - 80 km/h")
         img_seg2 = Plotter.plot_segment_group(best_event, [(40,60), (60,80)], "Tramos 40-60 y 60-80 km/h")
-        reporter.add_image(img_seg2)
         
-        success = reporter.build()
-        return success, filepath
+        sections.append({
+            "title": "Gráficas por Tramos 0-40 km/h",
+            "images": [img_seg1.getvalue() if hasattr(img_seg1, 'getvalue') else img_seg1],
+            "table_data": None
+        })
+        
+        sections.append({
+            "title": "Gráficas por Tramos 40-80 km/h",
+            "images": [img_seg2.getvalue() if hasattr(img_seg2, 'getvalue') else img_seg2],
+            "table_data": None
+        })
+        
+        preview_data = {
+            "type": "acceleration",
+            "moto_info": moto_info,
+            "inputs": inputs,
+            "comments": comments,
+            "env_conditions": env_conditions,
+            "sections": sections
+        }
+        
+        return True, preview_data
 
-    def process_climbing(self, solo_data, passenger_data, moto_info, comments, env_conditions=None):
+    # Use the general generate_pdf which handles all basic preview types that are unified
+    # But acceleration uses specific sub-headers and formats in its native execution. 
+    # Since generate_pdf uses the sections generically (just dumping images and tables), we can reuse it!
+
+    def evaluate_climbing(self, solo_data, passenger_data, moto_info, comments, env_conditions=None):
         """
         Processes Climbing/Ascent Test (0-70m).
+        Returns: success_bool, data_to_preview_or_error_msg
         """
         from analyzer import extract_climbing_events, calculate_climbing_metrics, export_event_to_csv, convert_units, parse_csv
         
@@ -603,29 +580,13 @@ class AnalysisController:
         if not combined_best:
              return False, "No valid events found after filtering."
              
-        # 3. Generate Report
-        filename = f"Ascenso_0_70_{moto_info.get('Nombre Comercial', 'Moto')}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = os.path.join(self.output_dir, filename)
-        
-        reporter = PDFReporter(filepath)
-        
-        # Header inputs info
-        pilots_info = []
-        if solo_data: pilots_info.append({'name': f"Solo: {solo_data['pilot']}", 'weight': solo_data['weight']})
-        if passenger_data: pilots_info.append({'name': f"Pass: {passenger_data['pilot']} + {passenger_data['passenger']}", 'weight': passenger_data['weight']})
-        
-        reporter.add_header(moto_info, pilots_info, comments, env_conditions, title="Prueba de Ascenso (0 - 70m)")
+        # --- PREVIEW SECTIONS PREPARATION ---
+        sections = []
         
         # --- Page 1: Combined ---
-        reporter.add_section("Resumen: Mejores Eventos (Solo vs Pasajero)")
-        
-        # Combined Graph (Speed vs Time)
-        # Reuse standard plot but maybe customize title
         img_buf1 = Plotter.plot_speed_vs_time(combined_best, "Comparativa Velocidad vs Tiempo")
-        reporter.add_image(img_buf1)
         
-        # Summary Table
-        table_data = [['Evento', 'Tiempo (s)', 'Vel Final (km/h)', 'Top RPM', 'Acel Prom (m/s²)']]
+        table_data_combined = [['Evento', 'Tiempo (s)', 'Vel Final (km/h)', 'Top RPM', 'Acel Prom (m/s²)']]
         for ev in combined_best:
             m = ev['metrics']
             row = [
@@ -635,74 +596,83 @@ class AnalysisController:
                 f"{int(m['top_rpm'])}",
                 f"{m['avg_acc']:.2f}"
             ]
-            table_data.append(row)
-        reporter.add_table(table_data)
+            table_data_combined.append(row)
+            
+        sections.append({
+            "title": "Ascenso 0-70m - Resumen Mejores Eventos (Solo vs Pasajero)",
+            "images": [img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1],
+            "table_data": table_data_combined
+        })
         
         # --- Page 2: Best Solo Detail ---
         if best_solo:
-            reporter.add_page_break()
             bs = best_solo[0]
-            reporter.add_section(f"Mejor Evento Solo - {bs['pilot']}")
-            
-            # Big Speed Graph
-            # We need a new plotter function that handles the markers at 10,30,50,70m
-            # Let's call it plot_climbing_detailed
             img_bs1 = Plotter.plot_climbing_detailed(bs, "Velocidad vs Tiempo (Detalle)")
-            reporter.add_image(img_bs1)
-            
-            # Small Graphs (RPM, Accel)
-            # Layout: Side by Side? Or Top/Bottom? "grafica de velocidad ... y de tamaño reducido las de RPM y aceleracion"
-            # Let's put them below
-            
             img_rpm = Plotter.plot_rpm_vs_time(bs, "RPM vs Tiempo", markers=bs['metrics'].get('markers'))
             img_acc = Plotter.plot_accel_vs_time(bs, "Aceleración vs Tiempo", markers=bs['metrics'].get('markers'))
             
-            # Add images with reduced height?
-            # Creating a grid for them might be better
-            # Or just add them sequentially with specific height
-            # Add images with reduced height
-            reporter.add_image(img_rpm, height=1.9*inch)
-            reporter.add_image(img_acc, height=1.9*inch)
-            
-            # Summary Table (Page 2)
-            # "evento, tiempo, velocidad, top rpm y aceleracion promedio"
             m = bs['metrics']
             t2 = [
                 ['Tiempo 0-70m', 'Velocidad Final', 'Top RPM', 'Aceleración Prom'],
                 [f"{m['time_s']:.2f} s", f"{m['v_final']:.2f} km/h", f"{int(m['top_rpm'])}", f"{m['avg_acc']:.2f} m/s²"]
             ]
-            reporter.add_table(t2)
+            
+            sections.append({
+                "title": f"Mejor Evento Solo - {bs['pilot']}",
+                "images": [
+                    img_bs1.getvalue() if hasattr(img_bs1, 'getvalue') else img_bs1,
+                    img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm,
+                    img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc
+                ],
+                "table_data": t2
+            })
 
         # --- Page 3: Best Passenger Detail ---
         if best_pass:
-            reporter.add_page_break()
             bp = best_pass[0]
-            reporter.add_section(f"Mejor Evento Pasajero - {bp['pilot']}")
-            
             img_bp1 = Plotter.plot_climbing_detailed(bp, "Velocidad vs Tiempo (Detalle)")
-            reporter.add_image(img_bp1)
-            
             img_rpm_p = Plotter.plot_rpm_vs_time(bp, "RPM vs Tiempo", markers=bp['metrics'].get('markers'))
             img_acc_p = Plotter.plot_accel_vs_time(bp, "Aceleración vs Tiempo", markers=bp['metrics'].get('markers'))
-            
-            reporter.add_image(img_rpm_p, height=1.9*inch)
-            reporter.add_image(img_acc_p, height=1.9*inch)
             
             m = bp['metrics']
             t3 = [
                 ['Tiempo 0-70m', 'Velocidad Final', 'Top RPM', 'Aceleración Prom'],
                 [f"{m['time_s']:.2f} s", f"{m['v_final']:.2f} km/h", f"{int(m['top_rpm'])}", f"{m['avg_acc']:.2f} m/s²"]
             ]
-            reporter.add_table(t3)
             
-        success = reporter.build()
-        return success, filepath
+            sections.append({
+                "title": f"Mejor Evento Pasajero - {bp['pilot']}",
+                "images": [
+                    img_bp1.getvalue() if hasattr(img_bp1, 'getvalue') else img_bp1,
+                    img_rpm_p.getvalue() if hasattr(img_rpm_p, 'getvalue') else img_rpm_p,
+                    img_acc_p.getvalue() if hasattr(img_acc_p, 'getvalue') else img_acc_p
+                ],
+                "table_data": t3
+            })
+            
+        # Instead of directly returning true and pdf path, return data necessary for Preview / PDF
+        # Note: We need a synthetic 'inputs' struct for generate_pdf to write the header properly
+        # Or modify generate_pdf to handle single dicts vs lists.
+        # Let's mock the 'inputs' structure using the pilots info format
+        inputs = []
+        if solo_data: inputs.append({'pilot': f"Solo: {solo_data['pilot']}", 'weight': solo_data['weight']})
+        if passenger_data: inputs.append({'pilot': f"Pass: {passenger_data['pilot']} + {passenger_data.get('passenger', '')}", 'weight': passenger_data['weight']})
 
-    def process_recovery(self, data, moto_data, comments, env_conditions):
+        preview_data = {
+            "type": "climbing",
+            "moto_info": moto_info,
+            "inputs": inputs,
+            "comments": comments,
+            "env_conditions": env_conditions,
+            "sections": sections
+        }
+        
+        return True, preview_data
+
+    def evaluate_recovery(self, data, moto_data, comments, env_conditions):
         """
         Process Recovery Test (Single File).
-        Groups: 30, 40, 50 km/h.
-        Best: Min Distance to 80 km/h.
+        Returns: success_bool, data_to_preview_or_error_msg
         """
         try:
             filepath = data['filepath']
@@ -742,35 +712,12 @@ class AnalysisController:
                 sorted_events = sorted(events, key=lambda x: x['dist_m'])
                 best_events[g] = sorted_events[0]
                 
-            # Reporting
-            pdf_name = f"Reporte_Recuperacion_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            pdf_path = os.path.join(self.output_dir, pdf_name)
-            
-            reporter = PDFReporter(pdf_path)
-            
-            # Cover
-            # Construct pilots_info list for add_header
-            pilots_info = [{'name': pilot, 'weight': weight}]
-            
-            reporter.add_header(moto_data, pilots_info, comments, env_conditions, title="Reporte de Prueba de Recuperación")
-            
-            # Summary Page (Combined Graph)
-            reporter.add_section("Resumen de Recuperación (Mejores Eventos)")
-            
-            # Combined Plot
-            # Create list of DFs for plotting
-            plot_events = []
-            legends = []
-            
-            sorted_groups = sorted(best_events.keys())
-            
-            for g in sorted_groups:
-                be = best_events[g]
-                plot_events.append({'df': be['df'], 'label': f"Inicio {g} km/h"})
-                legends.append(f"Inicio {g} km/h")
+            # --- PREVIEW SECTIONS PREPARATION ---
+            sections = []
             
             # Reconstruct into standard format for plotter
             plot_input = []
+            sorted_groups = sorted(best_events.keys())
             for g in sorted_groups:
                 be = best_events[g]
                 valid_evt = {
@@ -787,11 +734,9 @@ class AnalysisController:
                 }
                 plot_input.append(valid_evt)
             
-            # Plot 1: Combined Speed
+            # --- Combined Page ---
             img_buf = Plotter.plot_speed_vs_time(plot_input, "Comparativa Velocidad vs Tiempo")
-            reporter.add_image(img_buf, height=3.5*inch)
             
-            # Summary Table
             table_data = [["Evento", "Tiempo (s)", "Distancia (m)", "Top RPM", "V. Inicial (km/h)", "V. Final (km/h)", "Acel Prom (m/s²)"]]
             for g in sorted_groups:
                 be = best_events[g]
@@ -804,35 +749,29 @@ class AnalysisController:
                     f"{be['v_final']:.2f}",
                     f"{be['avg_acc']:.2f}"
                 ])
-            reporter.add_table(table_data)
+                
+            sections.append({
+                "title": "Recuperación - Resumen Mejores Eventos",
+                "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
+                "table_data": table_data
+            })
             
-            reporter.add_page_break()
-            
-            # Detailed Pages
+            # --- Detailed Pages ---
             for g in sorted_groups:
                 be = best_events[g]
-                reporter.add_section(f"Detalle: Inicio ~{g} km/h")
-                
                 valid_evt = {
                     'df': be['df'],
                     'metrics': be
                 }
                 
-                # Speed
                 img1 = Plotter.plot_speed_vs_time([valid_evt], f"Velocidad - Grupo {g}")
-                reporter.add_image(img1, height=3*inch)
                 
-                # RPM
+                img_rpm = None
                 if 'RPM' in be['df'].columns:
                      img_rpm = Plotter.plot_rpm_vs_time(valid_evt, f"RPM - Grupo {g}")
-                     reporter.add_image(img_rpm, height=2.6*inch)
 
-                # Accel
                 img_acc = Plotter.plot_accel_vs_time(valid_evt, f"Aceleración - Grupo {g}")
-                reporter.add_image(img_acc, height=2.6*inch) # Explicit height!
                 
-                # Stats Table
-                # Stats Table
                 stats = [
                     ["Tiempo 0-80", "Distancia", "V. Inicial", "V. Final", "Acel Prom", "RPM Max"],
                     [
@@ -844,11 +783,29 @@ class AnalysisController:
                         f"{be['top_rpm']:.0f}"
                     ]
                 ]
-                reporter.add_table(stats)
-                reporter.add_page_break()
                 
-            reporter.build()
-            return True, f"Reporte generado: {pdf_path}"
+                images = [img1.getvalue() if hasattr(img1, 'getvalue') else img1]
+                if img_rpm:
+                    images.append(img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm)
+                images.append(img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc)
+                
+                sections.append({
+                    "title": f"Detalle: Inicio ~{g} km/h",
+                    "images": images,
+                    "table_data": stats
+                })
+
+            preview_data = {
+                "type": "recovery",
+                "moto_info": moto_data,
+                "inputs": [data], # unified array pattern
+                "comments": comments,
+                "env_conditions": env_conditions,
+                "sections": sections
+            }
+            
+            return True, preview_data
+            
             
         except Exception as e:
             import traceback

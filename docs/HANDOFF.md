@@ -50,3 +50,39 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Próximos Pasos
 - Esperar las próximas instrucciones de Daniel sobre qué funcionalidad de `main.py` (o del proyecto en general) vamos a empezar a programar o revisar.
+
+---
+
+## Sesión: 04 de Marzo de 2026
+
+### 🎯 Objetivo Principal
+- Implementar la función de **"Previsualizar"** reportes antes de generar el PDF final.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Agregar un botón o flujo para poder ver las gráficas y la tabla resumen antes de confirmar la generación del PDF.
+
+### 🧠 Decisiones Tomadas
+- Se introdujo `preview_window.py` que contiene `PreviewWindow`, un `CTkToplevel` con scroll para ver imágenes y tablas.
+- Se refactorizó `analysis_controller.py`:
+  - Los métodos antiguos (`process_data`, `process_acceleration_0_80`, etc.) se dividieron. Ahora hay métodos `evaluate_*` que retornan un diccionario con la información y las gráficas en memoria (`io.BytesIO`).
+  - Se unificó la generación de reporte PDF a través del método `generate_pdf(preview_data)`.
+- Se actualizaron los módulos de la interfaz (`braking_test.py`, `acceleration_0_80.py`, `climbing_test.py`, `recovery_test.py`) para consumir la nueva lógica de evaluación e invocar `PreviewWindow`.
+
+### 📁 Archivos Modificados / Creados
+- `[NUEVO]` `preview_window.py`
+- `[NUEVO]` `docs/UI_PREVIEW_DESIGN.md`
+- `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `modules/braking_test.py`
+- `[MODIFICADO]` `modules/acceleration_0_80.py`
+- `[MODIFICADO]` `modules/climbing_test.py`
+- `[MODIFICADO]` `modules/recovery_test.py`
+
+### 💻 Comandos Ejecutados
+*(Refactorización de código sin instalación de nuevas dependencias)*
+
+### ⏳ Pendientes
+- Ejecutar pruebas manuales y visuales para confirmar que el diseño del PreviewWindow soporta correctamente el flujo de trabajo del usuario.
+- Ajustar el tamaño y la distribución de imágenes si se ven comprimidas en la previsualización.
+
+### 🚀 Próximos Pasos
+- Completar las pruebas con datos reales para dar por finalizada la integración de la previsualización.

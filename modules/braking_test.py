@@ -90,4 +90,19 @@ class BrakingTest(ctk.CTkFrame):
             messagebox.showerror("Error", "Debe seleccionar al menos un archivo válido y asignar un piloto.")
             return False, "Sin entradas válidas"
             
-        return self.controller.process_data(valid_inputs, moto_data, comments, env_conditions)
+        success, result = self.controller.evaluate_data(valid_inputs, moto_data, comments, env_conditions)
+        if success:
+            from preview_window import PreviewWindow
+            def on_confirm(sections_data):
+                # Pass the original result dict to the controller to finally generate PDF
+                final_success, filepath = self.controller.generate_pdf(result)
+                if final_success:
+                    messagebox.showinfo("Éxito", f"Reporte generado exitosamente:\n{filepath}")
+                else:
+                    messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
+                    
+            PreviewWindow(self, "Previsualización - Frenado", result['sections'], on_confirm)
+            return True, "Previsualización abierta"
+        else:
+            messagebox.showerror("Error", f"Error en el análisis:\n{result}")
+            return False, result

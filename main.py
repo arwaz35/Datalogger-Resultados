@@ -130,10 +130,10 @@ class App(ctk.CTk):
         self.comments_entry = ctk.CTkTextbox(self.action_frame, height=60)
         self.comments_entry.pack(fill="x", padx=10, pady=5)
         
-        self.generate_btn = ctk.CTkButton(self.action_frame, text="GENERAR REPORTE", 
+        self.generate_btn = ctk.CTkButton(self.action_frame, text="PREVISUALIZAR REPORTE", 
                                         font=("Arial", 16, "bold"), 
                                         height=50,
-                                        fg_color="green", hover_color="darkgreen",
+                                        fg_color="#F29F05", hover_color="#C27A04", text_color="black",
                                         command=self.start_generation)
         self.generate_btn.pack(fill="x", padx=20, pady=10)
         
@@ -355,13 +355,16 @@ class App(ctk.CTk):
                 success, result = self.active_module.process(moto_data, env_conditions, comments)
                 
                 if success:
-                    self.after(0, lambda: messagebox.showinfo("Éxito", f"Reporte generado correctamente en:\n{result}"))
+                    if "Previsualización" not in result:
+                         self.after(0, lambda: messagebox.showinfo("Éxito", f"Reporte generado correctamente en:\n{result}"))
                 else:
                     self.after(0, lambda: messagebox.showerror("Error", f"Problema: {result}"))
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self.after(0, lambda err=e: messagebox.showerror("Error Excepción", str(err)))
             finally:
-                self.after(0, lambda: self.generate_btn.configure(state="normal", text="GENERAR REPORTE"))
+                self.after(0, lambda: self.generate_btn.configure(state="normal", text="PREVISUALIZAR REPORTE"))
         
         threading.Thread(target=run, daemon=True).start()
 

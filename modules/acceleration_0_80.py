@@ -78,9 +78,21 @@ class Acceleration080Test(ctk.CTkFrame):
             messagebox.showerror("Error", "Debe seleccionar un archivo válido y asignar un piloto.")
             return False, "Sin entradas válidas"
             
-        # Delegate to controller specific method
-        # We need to implement process_acceleration_0_80 in controller
-        if hasattr(self.controller, 'process_acceleration_0_80'):
-            return self.controller.process_acceleration_0_80(valid_inputs, moto_data, comments, env_conditions)
+        if hasattr(self.controller, 'evaluate_acceleration_0_80'):
+            success, result = self.controller.evaluate_acceleration_0_80(valid_inputs, moto_data, comments, env_conditions)
+            if success:
+                from preview_window import PreviewWindow
+                def on_confirm(sections_data):
+                    final_success, filepath = self.controller.generate_pdf(result)
+                    if final_success:
+                        messagebox.showinfo("Éxito", f"Reporte generado exitosamente:\n{filepath}")
+                    else:
+                        messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
+                        
+                PreviewWindow(self, "Previsualización - Aceleración 0-80 km/h", result['sections'], on_confirm)
+                return True, "Previsualización abierta"
+            else:
+                messagebox.showerror("Error", f"Error en el análisis:\n{result}")
+                return False, result
         else:
             return False, "Método de análisis no implementado aún."

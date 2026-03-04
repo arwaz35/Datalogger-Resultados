@@ -78,9 +78,21 @@ class RecoveryTest(ctk.CTkFrame):
             messagebox.showerror("Error", "Debe seleccionar un archivo válido y asignar un piloto.")
             return False, "Sin entradas válidas"
             
-        # Delegate to controller
-        # We need to implement process_recovery in controller
-        if hasattr(self.controller, 'process_recovery'):
-            return self.controller.process_recovery(data, moto_data, comments, env_conditions)
+        if hasattr(self.controller, 'evaluate_recovery'):
+            success, result = self.controller.evaluate_recovery(data, moto_data, comments, env_conditions)
+            if success:
+                from preview_window import PreviewWindow
+                def on_confirm(sections_data):
+                    final_success, filepath = self.controller.generate_pdf(result)
+                    if final_success:
+                        messagebox.showinfo("Éxito", f"Reporte generado exitosamente:\n{filepath}")
+                    else:
+                        messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
+                        
+                PreviewWindow(self, "Previsualización - Recuperación", result['sections'], on_confirm)
+                return True, "Previsualización abierta"
+            else:
+                messagebox.showerror("Error", f"Error en el análisis:\n{result}")
+                return False, result
         else:
             return False, "Método de análisis de recuperación no implementado aún."
