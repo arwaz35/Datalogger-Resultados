@@ -325,21 +325,6 @@ class AnalysisController:
         # We will collect pilots next, so wait to build filename
         
         filepath = "" # Placeholder
-        tipo_prueba_map = {
-            'braking': 'Frenado',
-            'acceleration': 'Aceleracion',
-            'climbing': 'Ascenso',
-            'recovery': 'Recuperacion'
-        }
-        prueba_name = tipo_prueba_map.get(preview_data['type'], 'Prueba')
-        
-        def clean(s): return "".join([c for c in str(s) if c.isalnum() or c in (' ', '-', '_')]).strip()
-        moto_str = clean(moto_info.get('Nombre Comercial', 'Moto'))
-        modelo_str = clean(moto_info.get('Código Modelo', 'Modelo'))
-        
-        # We will collect pilots next, so wait to build filename
-        
-        filepath = "" # Placeholder
         
         pilots_info = []
         seen_pilots = set()
@@ -748,6 +733,26 @@ class AnalysisController:
                 # Sort by dist_m
                 sorted_events = sorted(events, key=lambda x: x['dist_m'])
                 best_events[g] = sorted_events[0]
+                
+            # Export CSV for the best events (like other modules do)
+            from analyzer import export_event_to_csv
+            lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
+            
+            for g, be in best_events.items():
+                # Construct event object for CSV export
+                valid_evt = {
+                    'df': be['df'],
+                    'metrics': {
+                        'start_idx': be['start_idx'],
+                        'end_idx': be['end_idx'],
+                        'time_s': be['time_s'],
+                        'dist_m': be['dist_m'],
+                        'avg_acc': be['avg_acc']
+                    },
+                    'pilot': pilot,
+                    'weight': weight
+                }
+                export_event_to_csv(valid_evt, self.output_dir, moto_data, lugar_name, test_name=f"Recuperacion_{g}kmh")
                 
             # --- PREVIEW SECTIONS PREPARATION ---
             sections = []

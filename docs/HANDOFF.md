@@ -95,6 +95,11 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - Se implementó la validación estricta: es obligatorio seleccionar un lugar para poder generar reportes o visualizarlos.
 - Se actualizó la tabla de "Condiciones Ambientales" en `reporter.py` para incluir también los datos del lugar seleccionado.
 
+### 📝 Correcciones Recientes de Exportación (v1.1.1 - v1.1.3)
+- Se actualizó la nomenclatura de archivos exportados (PDF y CSV) para incluir el `Lugar` en lugar del `Piloto`, además de añadir la hora exacta de la generación. Formato final: `(Prueba)_(Motocicleta)_(Codigo Modelo)_(Lugar)_(Fecha_Hora)`.
+- Se solucionó un error en `evaluate_recovery` donde no se generaban archivos CSV independientes para la prueba de Recuperación. Ahora exportará por cada grupo de velocidad (Ej: `Recuperacion_30kmh_...`).
+- Se corrigió un bloque de código duplicado accidentalmente introducido en `analysis_controller.py` para la generación de nombres de PDF.
+
 ### 💻 Comandos Ejecutados
 *(Refactorización de código sin instalación de nuevas dependencias)*
 
