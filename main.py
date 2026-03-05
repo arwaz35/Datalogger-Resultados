@@ -22,7 +22,7 @@ class App(ctk.CTk):
         super().__init__()
         
         self.title(f"Sistema de Análisis Incol - v{VERSION}")
-        self.geometry("1100x1000")
+        self.geometry("1100x850")
         # Maximize window by default
         # self.after(0, lambda: self.state("zoomed"))
         
@@ -36,117 +36,110 @@ class App(ctk.CTk):
         self.create_layouts()
         
     def create_layouts(self):
-        # --- 1. Moto Selection (Fixed Top) ---
-        self.moto_frame = ctk.CTkFrame(self)
-        self.moto_frame.pack(fill="x", padx=10, pady=5)
+        # --- 1. Top Controls (Moto, Lugar, Ranking) ---
+        self.top_frame = ctk.CTkFrame(self)
+        self.top_frame.pack(fill="x", padx=10, pady=2)
         
-        ctk.CTkLabel(self.moto_frame, text="Selección de Motocicleta", font=("Arial", 16, "bold")).pack(pady=5)
+        # Moto Row
+        self.moto_row = ctk.CTkFrame(self.top_frame, fg_color="transparent")
+        self.moto_row.pack(fill="x", padx=5, pady=2)
         
-        self.moto_combo = ctk.CTkComboBox(self.moto_frame, values=["Seleccione Moto..."], width=300)
-        self.moto_combo.pack(side="left", padx=20, pady=10)
+        ctk.CTkLabel(self.moto_row, text="Motocicleta:", font=("Arial", 14, "bold"), width=100, anchor="w").pack(side="left", padx=5)
+        self.moto_combo = ctk.CTkComboBox(self.moto_row, values=["Seleccione Moto..."], width=250)
+        self.moto_combo.pack(side="left", padx=5)
         
-        ctk.CTkButton(self.moto_frame, text="Nueva Moto", command=self.open_new_moto_window).pack(side="left", padx=10)
-        ctk.CTkButton(self.moto_frame, text="Actualizar Lista", command=self.refresh_motos).pack(side="left", padx=10)
-        ctk.CTkButton(self.moto_frame, text="Gestionar Pilotos", command=self.open_pilot_manager).pack(side="right", padx=20)
+        ctk.CTkButton(self.moto_row, text="Nueva Moto", command=self.open_new_moto_window, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(self.moto_row, text="Actualizar Lista", command=self.refresh_motos, width=100).pack(side="left", padx=5)
         
-        # --- 1b. Lugar Selection (Fixed Top) ---
-        self.lugar_frame = ctk.CTkFrame(self)
-        self.lugar_frame.pack(fill="x", padx=10, pady=5)
+        # Ranking Button & Gestor Pilotos
+        ctk.CTkButton(self.moto_row, text="Ranking Frenos", command=self.open_ranking_window, fg_color="purple", hover_color="#300030", width=120).pack(side="right", padx=5)
+        ctk.CTkButton(self.moto_row, text="Gestionar Pilotos", command=self.open_pilot_manager, width=120).pack(side="right", padx=5)
         
-        ctk.CTkLabel(self.lugar_frame, text="Lugar de Prueba", font=("Arial", 16, "bold")).pack(pady=5)
+        # Lugar Row
+        self.lugar_row = ctk.CTkFrame(self.top_frame, fg_color="transparent")
+        self.lugar_row.pack(fill="x", padx=5, pady=2)
         
-        self.lugar_combo = ctk.CTkComboBox(self.lugar_frame, values=["Seleccione Lugar..."], width=300)
-        self.lugar_combo.pack(side="left", padx=20, pady=10)
+        ctk.CTkLabel(self.lugar_row, text="Lugar:", font=("Arial", 14, "bold"), width=100, anchor="w").pack(side="left", padx=5)
+        self.lugar_combo = ctk.CTkComboBox(self.lugar_row, values=["Seleccione Lugar..."], width=250)
+        self.lugar_combo.pack(side="left", padx=5)
         
-        ctk.CTkButton(self.lugar_frame, text="Nuevo Lugar", command=self.open_new_lugar_window).pack(side="left", padx=10)
-        ctk.CTkButton(self.lugar_frame, text="Actualizar Lugares", command=self.refresh_lugares).pack(side="left", padx=10)
-        
-        # --- 2. Ranking (Fixed Top) ---
-        self.ranking_frame = ctk.CTkFrame(self)
-        self.ranking_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(self.ranking_frame, text="Ranking", font=("Arial", 16, "bold")).pack(side="left", padx=10)
-        ctk.CTkButton(self.ranking_frame, text="Ranking Frenos", command=self.open_ranking_window, fg_color="purple", hover_color="#300030").pack(side="left", padx=10)
+        ctk.CTkButton(self.lugar_row, text="Nuevo Lugar", command=self.open_new_lugar_window, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(self.lugar_row, text="Actualizar Lugares", command=self.refresh_lugares, width=100).pack(side="left", padx=5)
 
-        # --- 3. Test Selection (New) ---
+        # --- 2. Test Selection (Segmented Button) ---
         self.test_selector_frame = ctk.CTkFrame(self)
-        self.test_selector_frame.pack(fill="x", padx=10, pady=5)
+        self.test_selector_frame.pack(fill="x", padx=10, pady=2)
         
-        ctk.CTkLabel(self.test_selector_frame, text="Selección de Prueba:", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=2)
+        ctk.CTkLabel(self.test_selector_frame, text="Prueba:", font=("Arial", 14, "bold"), width=100, anchor="w").pack(side="left", padx=15, pady=5)
         
-        # Grid of buttons
-        tests = [
-            ("Prueba de Frenado", BrakingTest),
-            ("Prueba de Ascenso", ClimbingTest),
-            ("Aceleración 0-80", Acceleration080Test),
-            ("Prueba de Recuperación", RecoveryTest),
-            ("Velocidad Máxima", TopSpeedTest)
-        ]
+        self.tests_map = {
+            "Frenado": BrakingTest,
+            "Ascenso": ClimbingTest,
+            "Aceleración 0-80": Acceleration080Test,
+            "Recuperación": RecoveryTest,
+            "Velocidad Máxima": TopSpeedTest
+        }
         
-        btn_grid = ctk.CTkFrame(self.test_selector_frame, fg_color="transparent")
-        btn_grid.pack(fill="x", padx=5, pady=5)
-        
-        # Grid Configuration (2x2)
-        btn_grid.columnconfigure(0, weight=1)
-        btn_grid.columnconfigure(1, weight=1)
-        
-        for i, (name, cls) in enumerate(tests):
-            # Layout: 2 Columns
-            row = i // 2
-            col = i % 2
-            
-            btn = ctk.CTkButton(btn_grid, text=name, command=lambda c=cls: self.switch_module(c))
-            btn.grid(row=row, column=col, padx=5, pady=5, sticky="ew")
+        self.test_var = ctk.StringVar(value="Frenado")
+        self.test_segmented = ctk.CTkSegmentedButton(
+            self.test_selector_frame, 
+            values=list(self.tests_map.keys()),
+            variable=self.test_var,
+            command=self.on_test_selected,
+            font=("Arial", 12, "bold")
+        )
+        self.test_segmented.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
-        # --- 4. Dynamic Module Area ---
+        # --- 3. Dynamic Module Area ---
         self.module_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.module_container.pack(fill="both", expand=True, padx=10, pady=5)
+        self.module_container.pack(fill="both", expand=True, padx=10, pady=2)
         
-        # --- 5. Env Conditions (Common Footer) ---
-        self.env_frame = ctk.CTkFrame(self)
-        self.env_frame.pack(fill="x", padx=10, pady=5)
+        # --- 4. Env Conditions & Comments (Combined Footer) ---
+        self.footer_frame = ctk.CTkFrame(self)
+        self.footer_frame.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(self.env_frame, text="Condiciones Ambientales:", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=2)
+        # Conditions Row
+        env_f = ctk.CTkFrame(self.footer_frame, fg_color="transparent")
+        env_f.pack(fill="x", padx=10, pady=2)
         
-        env_grid = ctk.CTkFrame(self.env_frame, fg_color="transparent")
-        env_grid.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(env_f, text="Condiciones Ambientales | ", font=("Arial", 12, "bold")).pack(side="left")
+        ctk.CTkLabel(env_f, text="Temp. Amb (°C):", font=("Arial", 11)).pack(side="left", padx=(5, 2))
+        self.temp_amb_entry = ctk.CTkEntry(env_f, width=50, height=25)
+        self.temp_amb_entry.pack(side="left", padx=(0, 10))
         
-        # Temp Ambient
-        ctk.CTkLabel(env_grid, text="Temp. Amb (°C):").grid(row=0, column=0, padx=5, pady=2)
-        self.temp_amb_entry = ctk.CTkEntry(env_grid, width=60)
-        self.temp_amb_entry.grid(row=0, column=1, padx=5, pady=2)
+        ctk.CTkLabel(env_f, text="Humedad (%):", font=("Arial", 11)).pack(side="left", padx=2)
+        self.humidity_entry = ctk.CTkEntry(env_f, width=50, height=25)
+        self.humidity_entry.pack(side="left", padx=(0, 10))
         
-        # Humedad
-        ctk.CTkLabel(env_grid, text="Humedad (%):").grid(row=0, column=2, padx=5, pady=2)
-        self.humidity_entry = ctk.CTkEntry(env_grid, width=60)
-        self.humidity_entry.grid(row=0, column=3, padx=5, pady=2)
+        ctk.CTkLabel(env_f, text="Temp. Suelo (°C):", font=("Arial", 11)).pack(side="left", padx=2)
+        self.temp_ground_entry = ctk.CTkEntry(env_f, width=50, height=25)
+        self.temp_ground_entry.pack(side="left", padx=2)
         
-        # Temp Suelo
-        ctk.CTkLabel(env_grid, text="Temp. Suelo (°C):").grid(row=0, column=4, padx=5, pady=2)
-        self.temp_ground_entry = ctk.CTkEntry(env_grid, width=60)
-        self.temp_ground_entry.grid(row=0, column=5, padx=5, pady=2)
-            
-        # --- 6. Comments and Action (Common Footer) ---
-        self.action_frame = ctk.CTkFrame(self)
-        self.action_frame.pack(fill="x", padx=10, pady=10)
+        # Comments & Button Row
+        action_f = ctk.CTkFrame(self.footer_frame, fg_color="transparent")
+        action_f.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(self.action_frame, text="Comentarios:").pack(anchor="w", padx=10)
-        self.comments_entry = ctk.CTkTextbox(self.action_frame, height=60)
-        self.comments_entry.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(action_f, text="Comentarios:", font=("Arial", 12, "bold")).pack(side="left", anchor="n")
+        self.comments_entry = ctk.CTkTextbox(action_f, height=45)
+        self.comments_entry.pack(side="left", fill="x", expand=True, padx=10)
         
-        self.generate_btn = ctk.CTkButton(self.action_frame, text="PREVISUALIZAR REPORTE", 
-                                        font=("Arial", 16, "bold"), 
-                                        height=50,
+        self.generate_btn = ctk.CTkButton(action_f, text="PREVISUALIZAR\nREPORTE", 
+                                        font=("Arial", 14, "bold"), 
+                                        width=200, height=45,
                                         fg_color="#F29F05", hover_color="#C27A04", text_color="black",
                                         command=self.start_generation)
-        self.generate_btn.pack(fill="x", padx=20, pady=10)
-        
+        self.generate_btn.pack(side="right", padx=5)
+
         # Initialize
         self.refresh_motos()
         self.refresh_lugares()
         
         # Set default module
         self.switch_module(BrakingTest)
+
+    def on_test_selected(self, value):
+        cls = self.tests_map[value]
+        self.switch_module(cls)
 
     def switch_module(self, module_class):
         # Clear current module
