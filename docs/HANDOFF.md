@@ -115,3 +115,37 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Próximos Pasos
 - Completar las pruebas con datos reales para dar por finalizada la integración de la previsualización.
+
+---
+
+## Sesión: 05 de Marzo de 2026
+
+### 🎯 Objetivo Principal
+- Optimizar el espacio vertical de la interfaz principal (`main.py`) para monitores o resoluciones limitadas (altura libre de 900px máximo).
+- Reestructurar el encabezado de información técnica de los reportes PDF.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Reorganizar la parte de selección de prueba y recortar espacio en lo alto en `main.py` ajustando la geometría a 900 de altura máxima.
+- Modificar la tabla de datos técnicos de la moto al inicio del reporte PDF (`reporter.py`), ordenando los campos en una estructura de 4 filas y dos columnas principales.
+- Actualizar el control de versiones.
+
+### 🧠 Decisiones Tomadas
+- Se sustituyeron los grandes botones en cuadrícula por un componente horizontal avanzado llamado `CTkSegmentedButton` en `main.py`, que encapsula todas las opciones de pruebas en una sola línea.
+- Se agruparon lógicamente los combos de `Motocicleta` y `Lugar de Prueba` en una cabecera más compacta, y de igual forma las `Condiciones Ambientales` en un pie de página junto al bloque de `Comentarios` y el botón de generar.
+- La geometría de ventana se estableció en `1100x850` para un margen de seguridad razonable debajo de 900px.
+- La versión fue subida a **v1.4.0** tras la reestructuración completa de la ventana principal y la modificación del PDF.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `main.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 💻 Comandos Ejecutados
+*(Sin comandos ejecutados, solo refactorizaciones visuales)*
+
+### ⏳ Pendientes
+- Pruebas en el lugar de uso real para confirmar el correcto despliegue visual de los reportes generados.
+
+### 🚀 Próximos Pasos
+- Esperar confirmación de Daniel para avanzar en nuevas funcionalidades.

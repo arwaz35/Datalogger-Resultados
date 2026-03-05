@@ -27,7 +27,8 @@ class PDFReporter:
         
         # Moto Info
         moto_data = [
-            ["Fecha:", datetime.now().strftime("%Y-%m-%d"), "Placa:", moto_info.get('Placa', '')],
+            ["Nombre comercial:", moto_info.get('Nombre Comercial', ''), "Fecha:", datetime.now().strftime("%Y-%m-%d")],
+            ["Código de Modelo:", moto_info.get('Código Modelo', ''), "Placa:", moto_info.get('Placa', '')],
             ["Cilindraje:", f"{moto_info.get('Cilindraje (cc)', '')} cc", "Peso Moto:", f"{moto_info.get('Peso (Kg)', '')} Kg"],
             ["Potencia:", f"{moto_info.get('Potencia (Hp)', '')} Hp", "Torque:", f"{moto_info.get('Torque (Nm)', '')} Nm"]
         ]
