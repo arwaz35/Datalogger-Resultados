@@ -246,14 +246,20 @@ class AnalysisController:
             
             img_buf = Plotter.plot_speed_vs_time(selected_events_for_combined, f"Velocidad vs Tiempo ({speed} km/h)")
             
-            table_data_combined = [['Evento', 'Distancia (m)', 'Tiempo (s)', 'Acel Prom (m/s²)']]
+            table_data_combined = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
             for i, ev in enumerate(selected_events_for_combined):
+                # Braking v_final is usually 0, but we can extract it if needed or assume 0 for Braking.
+                v_start = ev['initial_speed']
+                v_final = 0.0
                 m = ev['metrics']
                 row = [
                     f"Evento {i+1} ({ev['pilot']})",
-                    f"{m['dist_m']:.2f}",
+                    f"{v_start:.2f}",
+                    f"{v_final:.2f}",
                     f"{m['time_s']:.2f}",
-                    f"{m['avg_acc']:.2f}"
+                    f"{m['dist_m']:.2f}",
+                    f"{m['avg_acc']:.2f}",
+                    f"{int(m.get('top_rpm', 0))}"
                 ]
                 table_data_combined.append(row)
                 
@@ -430,16 +436,17 @@ class AnalysisController:
         # Summary 3 Best Events
         img_buf = Plotter.plot_acceleration_comparison(top_3_events, "Comparativa: Velocidad vs Tiempo (Top 3)")
         
-        table_data_summary = [['Evento', 'Distancia (m)', 'Top RPM', 'Tiempo (s)', 'Acel Prom (m/s²)', 'Vel Final (km/h)']]
+        table_data_summary = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
         for i, ev in enumerate(top_3_events):
             m = ev['metrics']
             row = [
                 f"Evento {ev['id']} ({ev['pilot']})",
-                f"{m['dist_m']:.2f}",
-                f"{int(m.get('top_rpm', 0))}",
+                f"{m.get('v_start', 0.0):.2f}",
+                f"{m.get('v_final', 80.0):.2f}",
                 f"{m['time_s']:.2f}",
+                f"{m['dist_m']:.2f}",
                 f"{m['avg_acc']:.2f}",
-                f"{m['v_final']:.2f}"
+                f"{int(m.get('top_rpm', 0))}"
             ]
             table_data_summary.append(row)
             
@@ -608,15 +615,17 @@ class AnalysisController:
         # --- Page 1: Combined ---
         img_buf1 = Plotter.plot_speed_vs_time(combined_best, "Comparativa Velocidad vs Tiempo")
         
-        table_data_combined = [['Evento', 'Tiempo (s)', 'Vel Final (km/h)', 'Top RPM', 'Acel Prom (m/s²)']]
+        table_data_combined = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
         for ev in combined_best:
             m = ev['metrics']
             row = [
                 f"{ev['pilot']} ({ev['id']})",
-                f"{m['time_s']:.2f}",
+                f"{m.get('v_start', 0.0):.2f}",
                 f"{m['v_final']:.2f}",
-                f"{int(m['top_rpm'])}",
-                f"{m['avg_acc']:.2f}"
+                f"{m['time_s']:.2f}",
+                "70.00",
+                f"{m['avg_acc']:.2f}",
+                f"{int(m['top_rpm'])}"
             ]
             table_data_combined.append(row)
             
@@ -635,8 +644,8 @@ class AnalysisController:
             
             m = bs['metrics']
             t2 = [
-                ['Tiempo 0-70m', 'Velocidad Final', 'Top RPM', 'Aceleración Prom'],
-                [f"{m['time_s']:.2f} s", f"{m['v_final']:.2f} km/h", f"{int(m['top_rpm'])}", f"{m['avg_acc']:.2f} m/s²"]
+                ['V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM'],
+                [f"{m.get('v_start', 0.0):.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}", "70.00", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"]
             ]
             
             sections.append({
@@ -658,8 +667,8 @@ class AnalysisController:
             
             m = bp['metrics']
             t3 = [
-                ['Tiempo 0-70m', 'Velocidad Final', 'Top RPM', 'Aceleración Prom'],
-                [f"{m['time_s']:.2f} s", f"{m['v_final']:.2f} km/h", f"{int(m['top_rpm'])}", f"{m['avg_acc']:.2f} m/s²"]
+                ['V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM'],
+                [f"{m.get('v_start', 0.0):.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}", "70.00", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"]
             ]
             
             sections.append({
@@ -779,17 +788,17 @@ class AnalysisController:
             # --- Combined Page ---
             img_buf = Plotter.plot_speed_vs_time(plot_input, "Comparativa Velocidad vs Tiempo")
             
-            table_data = [["Evento", "Tiempo (s)", "Distancia (m)", "Top RPM", "V. Inicial (km/h)", "V. Final (km/h)", "Acel Prom (m/s²)"]]
+            table_data = [["Evento", "V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]]
             for g in sorted_groups:
                 be = best_events[g]
                 table_data.append([
                     f"Inicio {g} km/h",
-                    f"{be['time_s']:.2f}",
-                    f"{be['dist_m']:.2f}",
-                    f"{int(be['top_rpm'])}",
                     f"{be['v_start']:.2f}",
                     f"{be['v_final']:.2f}",
-                    f"{be['avg_acc']:.2f}"
+                    f"{be['time_s']:.2f}",
+                    f"{be['dist_m']:.2f}",
+                    f"{be['avg_acc']:.2f}",
+                    f"{int(be['top_rpm'])}"
                 ])
                 
             sections.append({
@@ -815,14 +824,14 @@ class AnalysisController:
                 img_acc = Plotter.plot_accel_vs_time(valid_evt, f"Aceleración - Grupo {g}")
                 
                 stats = [
-                    ["Tiempo 0-80", "Distancia", "V. Inicial", "V. Final", "Acel Prom", "RPM Max"],
+                    ["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"],
                     [
-                        f"{be['time_s']:.2f} s",
-                        f"{be['dist_m']:.2f} m",
-                        f"{be['v_start']:.2f} km/h",
-                        f"{be['v_final']:.2f} km/h",
-                        f"{be['avg_acc']:.2f} m/s²",
-                        f"{be['top_rpm']:.0f}"
+                        f"{be['v_start']:.2f}",
+                        f"{be['v_final']:.2f}",
+                        f"{be['time_s']:.2f}",
+                        f"{be['dist_m']:.2f}",
+                        f"{be['avg_acc']:.2f}",
+                        f"{int(be['top_rpm'])}"
                     ]
                 ]
                 
