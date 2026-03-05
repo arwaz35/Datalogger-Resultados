@@ -752,7 +752,7 @@ class AnalysisController:
                     'pilot': pilot,
                     'weight': weight
                 }
-                export_event_to_csv(valid_evt, self.output_dir, moto_data, lugar_name, test_name=f"Recuperacion_{g}kmh")
+                export_event_to_csv(valid_evt, self.output_dir, moto_data, lugar_name, test_name="Recuperacion")
                 
             # --- PREVIEW SECTIONS PREPARATION ---
             sections = []
