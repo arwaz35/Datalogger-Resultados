@@ -634,6 +634,116 @@ def calculate_climbing_metrics(event_df, start_idx=None, end_idx=None):
         print(f"Error climbing metrics: {e}")
         return None
 
+def extract_top_speed_events(df, target_distance=200):
+    """
+    Extracts top speed events (0 to 200m based on trigger).
+    Criteria:
+    1. Pulsador == 100 trigger.
+    2. End: Distance >= 200m from start (using cumulative distance column if reliable, or integration).
+    """
+    events = []
+    
+    if 'Pulsador' not in df.columns or 'Velocidad_GPS' not in df.columns:
+        return events
+
+    # Find triggers
+    trigger_indices = df.index[df['Pulsador'] == 100].tolist()
+    
+    # Group triggers
+    grouped_triggers = []
+    if trigger_indices:
+        current_group_start = trigger_indices[0]
+        prev_idx = trigger_indices[0]
+        for idx in trigger_indices[1:]:
+            if idx > prev_idx + 10: 
+                grouped_triggers.append(current_group_start)
+                current_group_start = idx
+            prev_idx = idx
+        grouped_triggers.append(current_group_start)
+
+    for start_idx in grouped_triggers:
+        search_end = min(len(df), start_idx + 1200) # Give it 120s max
+        start_loc = df.index.get_loc(start_idx)
+        run_slice = df.iloc[start_loc:search_end].copy()
+        
+        if run_slice.empty: continue
+        
+        # Calculate Relative Distance
+        if 'Distancia' in run_slice.columns:
+            d_start = run_slice.iloc[0]['Distancia']
+            run_slice['Dist_Rel'] = run_slice['Distancia'] - d_start
+        else:
+            run_slice['Dist_Rel'] = (run_slice['Velocidad_GPS'] / 3.6 * 0.1).cumsum()
+            
+        # Find point where Dist_Rel >= target_distance
+        achieved = run_slice[run_slice['Dist_Rel'] >= target_distance]
+        
+        if achieved.empty:
+            continue # Did not reach 200m
+            
+        end_idx = achieved.index[0]
+        end_loc = df.index.get_loc(end_idx)
+        
+        # Create Event DF (add some buffer for plotting if needed, 1s before, 1s after)
+        cut_start = max(0, start_loc - 10)
+        cut_end = min(len(df), end_loc + 11)
+        
+        event_df = df.iloc[cut_start:cut_end].copy()
+        
+        if not event_df.empty:
+            event_df.attrs['start_idx'] = start_idx
+            event_df.attrs['end_idx'] = end_idx
+            events.append(event_df)
+            
+    return events
+
+def calculate_top_speed_metrics(event_df, start_idx=None, end_idx=None):
+    """
+    Calculates metrics for top speed (0-200m).
+    """
+    try:
+        if start_idx is None: start_idx = event_df.attrs.get('start_idx')
+        if end_idx is None: end_idx = event_df.attrs.get('end_idx')
+        
+        if start_idx is None or end_idx is None: return None
+        if start_idx not in event_df.index or end_idx not in event_df.index: return None
+            
+        start_loc = event_df.index.get_loc(start_idx)
+        end_loc = event_df.index.get_loc(end_idx)
+        
+        phase = event_df.iloc[start_loc : end_loc+1].copy()
+        
+        time_s = (len(phase) - 1) * 0.1
+        v_start = phase.iloc[0]['Velocidad_GPS']
+        v_final = phase.iloc[-1]['Velocidad_GPS']
+        v_max = phase['Velocidad_GPS'].max()
+        top_rpm = phase['RPM'].max() if 'RPM' in phase.columns else 0
+        
+        avg_acc = 0
+        if 'Accel_X_ms2' in phase.columns:
+            avg_acc = phase['Accel_X_ms2'].mean()
+        
+        dist_m = 0
+        if 'Distancia' in phase.columns:
+            dist_m = phase.iloc[-1]['Distancia'] - phase.iloc[0]['Distancia']
+        else:
+            dist_m = (phase['Velocidad_GPS'] / 3.6 * 0.1).sum()
+            
+        return {
+            'time_s': time_s,
+            'dist_m': dist_m,
+            'v_start': v_start,
+            'v_final': v_final,
+            'v_max': v_max,
+            'top_rpm': top_rpm,
+            'avg_acc': avg_acc,
+            'start_idx': start_idx,
+            'end_idx': end_idx
+        }
+    except Exception as e:
+        print(f"Error top speed metrics: {e}")
+        return None
+
 def extract_recovery_events(df, target_speed=80):
     """
     Extracts recovery events (Start V -> 80 km/h).

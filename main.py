@@ -12,8 +12,7 @@ from modules.climbing_test import ClimbingTest
 # from modules.acceleration_0_60 import Acceleration060Test # REPLACED/REMOVED
 from modules.acceleration_0_80 import Acceleration080Test
 from modules.recovery_test import RecoveryTest # NEW COMBINED MODULE
-# from modules.recovery_100m import Recovery100mTest # REMOVED
-# from modules.recovery_200m import Recovery200mTest # REMOVED
+from modules.top_speed_test import TopSpeedTest # NEW MODULE
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -80,7 +79,8 @@ class App(ctk.CTk):
             ("Prueba de Frenado", BrakingTest),
             ("Prueba de Ascenso", ClimbingTest),
             ("Aceleración 0-80", Acceleration080Test),
-            ("Prueba de Recuperación", RecoveryTest)
+            ("Prueba de Recuperación", RecoveryTest),
+            ("Velocidad Máxima", TopSpeedTest)
         ]
         
         btn_grid = ctk.CTkFrame(self.test_selector_frame, fg_color="transparent")

@@ -320,7 +320,8 @@ class AnalysisController:
             'braking': 'Frenado',
             'acceleration': 'Aceleracion',
             'climbing': 'Ascenso',
-            'recovery': 'Recuperacion'
+            'recovery': 'Recuperacion',
+            'top_speed': 'Velocidad_Maxima'
         }
         prueba_name = tipo_prueba_map.get(preview_data['type'], 'Prueba')
         
@@ -862,3 +863,111 @@ class AnalysisController:
             import traceback
             traceback.print_exc()
             return False, f"Error en control: {str(e)}"
+
+    def evaluate_top_speed(self, data, moto_data, comments, env_conditions):
+        """
+        Process Top Speed Test (Single File).
+        Returns: success_bool, data_to_preview_or_error_msg
+        """
+        try:
+            from analyzer import extract_top_speed_events, calculate_top_speed_metrics, export_event_to_csv
+            
+            filepath = data['filepath']
+            pilot = data['pilot']
+            weight = data['weight']
+            
+            df = parse_csv(filepath)
+            df = convert_units(df)
+            
+            raw_events = extract_top_speed_events(df, target_distance=200)
+            
+            if not raw_events:
+                return False, "No se encontraron eventos de Velocidad Máxima válidos (Pulsador=100 -> 200m)."
+                
+            valid_events = []
+            for i, evt_df in enumerate(raw_events):
+                m = calculate_top_speed_metrics(evt_df)
+                if m:
+                    valid_events.append({
+                        'df': evt_df,
+                        'metrics': m,
+                        'pilot': pilot,
+                        'weight': weight,
+                        'id': i+1
+                    })
+            
+            if not valid_events:
+                return False, "No se pudieron calcular métricas válidas."
+                
+            # Sort by best (Highest V. Maxima)
+            valid_events.sort(key=lambda x: x['metrics']['v_max'], reverse=True)
+            best_event = valid_events[0]
+            
+            # Export CSV for the best event
+            lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
+            export_event_to_csv(best_event, self.output_dir, moto_data, lugar_name, test_name="Velocidad_Maxima")
+            
+            # --- PREVIEW SECTIONS PREPARATION ---
+            sections = []
+            
+            # Standard Metrics Table
+            m = best_event['metrics']
+            stats = [
+                ["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"],
+                [
+                    f"{m['v_start']:.2f}",
+                    f"{m['v_final']:.2f}",
+                    f"{m['time_s']:.2f}",
+                    f"{m['dist_m']:.2f}",
+                    f"{m['avg_acc']:.2f}",
+                    f"{int(m['top_rpm'])}"
+                ]
+            ]
+            
+            # Additional detail metric just for top speed explicitly
+            stats_extra = [
+                ["Velocidad Máxima Alcanzada"],
+                [f"{m['v_max']:.2f} km/h"]
+            ]
+            
+            img_v = Plotter.plot_speed_vs_time([best_event], "Velocidad vs Tiempo (Velocidad Máxima)")
+            
+            img_rpm = None
+            if 'RPM' in best_event['df'].columns:
+                 img_rpm = Plotter.plot_rpm_vs_time(best_event, "RPM vs Tiempo")
+
+            img_acc = Plotter.plot_accel_vs_time(best_event, "Aceleración vs Tiempo")
+            
+            images = [img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v]
+            if img_rpm:
+                images.append(img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm)
+            images.append(img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc)
+            
+            sections.append({
+                "title": f"Velocidad Máxima - Mejor Evento ({pilot})",
+                "images": images,
+                "table_data": stats
+            })
+            
+            sections.append({
+                "title": "Métrica Principal",
+                "images": [],
+                "table_data": stats_extra
+            })
+
+            preview_data = {
+                "type": "top_speed",
+                "moto_info": moto_data,
+                "inputs": [data],
+                "comments": comments,
+                "env_conditions": env_conditions,
+                "sections": sections
+            }
+            
+            return True, preview_data
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return False, f"Error en control: {str(e)}"
+
