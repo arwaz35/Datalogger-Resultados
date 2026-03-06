@@ -141,11 +141,21 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - `[MODIFICADO]` `reporter.py`
 - `[MODIFICADO]` `docs/HANDOFF.md`
 
+### � Cambio Mayor de Interfaz y Flujo (v2.0.0)
+- **Reestructuración de inicio**. A petición del usuario, se modificó drásticamente el flujo de inicio de la aplicación para hacerla escalable a nuevos modos de operación.
+- **Menú Principal (`main.py`)**: Se extrajo la interfaz de pruebas individual a una sub-vista, y ahora la aplicación arranca con una pantalla de bienvenida que ofrece 3 opciones de trabajo:
+  1. `Comparativo` (En desarrollo)
+  2. `Todas las pruebas` (En desarrollo)
+  3. `Individual` (Interfaz funcional actual)
+- **Navegación**: Se implementó un sistema de limpieza de pantalla (`clear_window`) para cambiar entre las distintas vistas sin abrir ventanas múltiples.
+- **Retorno al menú principal**: A cada módulo se le agregó un botón en la esquina inferior izquierda (`⬅ Regresar`) para volver instantáneamente a la selección principal.
+- **Control de Versiones (`version.py`)**: Debido al cambio sustancial en el "core" de la navegación e interfaz, se ha incrementado el sistema directo a su **Versión 2.0.0**.
+
 ### 💻 Comandos Ejecutados
-*(Sin comandos ejecutados, solo refactorizaciones visuales)*
+*(Sin comandos ejecutados, solo refactorizaciones visuales profundas)*
 
 ### ⏳ Pendientes
-- Pruebas en el lugar de uso real para confirmar el correcto despliegue visual de los reportes generados.
+- Desarrollar la lógica y diseño de las ventanas vacías `Comparativo` y `Todas las pruebas` a futuro.
 
 ### 🚀 Próximos Pasos
-- Esperar confirmación de Daniel para avanzar en nuevas funcionalidades.
+- Esperar confirmación de Daniel para avanzar en las nuevas rutas de "Comparativo" o "Todas las pruebas".
