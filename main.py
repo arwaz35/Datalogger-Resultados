@@ -33,9 +33,59 @@ class App(ctk.CTk):
         self.moto_values_map = []
         self.lugar_values_map = []
         
-        self.create_layouts()
+        self.show_main_menu()
         
-    def create_layouts(self):
+    def clear_window(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+    def show_main_menu(self):
+        self.clear_window()
+        
+        menu_frame = ctk.CTkFrame(self, fg_color="transparent")
+        menu_frame.place(relx=0.5, rely=0.5, anchor="center")
+        
+        ctk.CTkLabel(menu_frame, text="Sistema de Análisis Incol", font=("Arial", 32, "bold")).pack(pady=40)
+        ctk.CTkLabel(menu_frame, text="Seleccione el tipo de programa a ejecutar:", font=("Arial", 18)).pack(pady=20)
+        
+        btn_font = ("Arial", 16, "bold")
+        ctk.CTkButton(menu_frame, text="Comparativo", font=btn_font, width=300, height=60, 
+                      command=self.show_comparativo_view).pack(pady=15)
+                      
+        ctk.CTkButton(menu_frame, text="Todas las pruebas", font=btn_font, width=300, height=60, 
+                      command=self.show_todas_pruebas_view).pack(pady=15)
+                      
+        ctk.CTkButton(menu_frame, text="Individual", font=btn_font, width=300, height=60, 
+                      command=self.show_individual_view).pack(pady=15)
+
+    def show_comparativo_view(self):
+        self.clear_window()
+        
+        ctk.CTkLabel(self, text="Modo Comparativo", font=("Arial", 24, "bold")).pack(pady=50)
+        ctk.CTkLabel(self, text="Este módulo aún no está disponible.", font=("Arial", 16)).pack(pady=10)
+        
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=20)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar", font=("Arial", 14, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
+
+    def show_todas_pruebas_view(self):
+        self.clear_window()
+        
+        ctk.CTkLabel(self, text="Todas las Pruebas", font=("Arial", 24, "bold")).pack(pady=50)
+        ctk.CTkLabel(self, text="Este módulo aún no está disponible.", font=("Arial", 16)).pack(pady=10)
+        
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=20)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar", font=("Arial", 14, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
+
+    def show_individual_view(self):
+        self.clear_window()
+        
+        # --- 0. Back Button ---
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=10)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar al Menú", font=("Arial", 12, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
+        
         # --- 1. Top Controls (Moto, Lugar, Ranking) ---
         self.top_frame = ctk.CTkFrame(self)
         self.top_frame.pack(fill="x", padx=10, pady=2)

@@ -1,4 +1,4 @@
 # Archivo de control de versiones
 # Actualizar este número con cada cambio significativo.
 
-VERSION = "1.4.0"
+VERSION = "2.0.0"
