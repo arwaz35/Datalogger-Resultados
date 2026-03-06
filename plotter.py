@@ -135,8 +135,8 @@ class Plotter:
         df_reset = df.reset_index(drop=True)
         time_axis = (df_reset.index - start_pos) * 0.1
         
-        # increased figsize to match speed plot width, slightly shorter height
-        fig, ax = plt.subplots(figsize=(15, 5))
+        # Reducir la altura a 3 para agrupar en una sola hoja PDF
+        fig, ax = plt.subplots(figsize=(15, 3))
         
         # Plot RPM
         if 'RPM' in df_reset.columns:
@@ -263,10 +263,10 @@ class Plotter:
         
         time_axis = (df_reset.index - start_pos) * 0.1
         
-        # increased figsize
-        fig, ax = plt.subplots(figsize=(15, 5))
+        # Reducir la altura a 3 para agrupar en una sola hoja PDF
+        fig, ax = plt.subplots(figsize=(15, 3))
         
-        # Plot Instant Accel (Signed)
+        # Plot Accel X (Original/Raw)
         ax.plot(time_axis, df_reset['Accel_X_Plot'], label='Aceleración (m/s²)', color='blue', linewidth=1.5)
         
         # Plot Cumulative Average

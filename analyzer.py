@@ -240,12 +240,22 @@ def calculate_metrics(event_df, start_idx, end_idx):
     else:
         avg_acc = 0
         
+    # Agrupar por velocidad inicial (40 o 60 km/h)
+    initial_speed = phase_df.loc[start_idx, 'Velocidad_GPS'] if start_idx in phase_df.index else 0
+    group = 0
+    if 35 <= initial_speed <= 45:
+        group = 40
+    elif 55 <= initial_speed <= 65:
+        group = 60
+        
     return {
         'time_s': time_s,
         'dist_m': dist_m,
         'avg_acc': avg_acc, # Now signed and only average
         'start_idx': start_idx,
-        'end_idx': end_idx
+        'end_idx': end_idx,
+        'v_start': initial_speed,
+        'group': group
     }
 
 def export_event_to_csv(event, output_dir, moto_info, lugar_name, test_name="Prueba"):

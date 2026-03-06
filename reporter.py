@@ -19,10 +19,10 @@ class PDFReporter:
         self.styles.add(ParagraphStyle(name='Header2', parent=self.styles['Heading2'], spaceBefore=15, spaceAfter=10))
         self.styles.add(ParagraphStyle(name='NormalCenter', parent=self.styles['Normal'], alignment=1))
 
-    def add_header(self, moto_info, pilots_info, comments, env_conditions=None, title=None):
+    def add_header(self, moto_info, pilots_info, comments, env_conditions=None, title=None, test_type="frenado"):
         # Title
         if title is None:
-            title = f"Prueba de frenado del modelo {moto_info.get('Nombre Comercial', '')} ({moto_info.get('Código Modelo', '')})"
+            title = f"- Prueba de {test_type} del modelo \"{moto_info.get('Nombre Comercial', '')}\" (\"{moto_info.get('Código Modelo', '')}\") -"
         self.elements.append(Paragraph(title, self.styles['Header1']))
         
         # Moto Info
@@ -101,10 +101,22 @@ class PDFReporter:
     def add_section(self, title):
         self.elements.append(Paragraph(title, self.styles['Header2']))
 
-    def add_image(self, img_bytes, width=7.9*inch, height=3.95*inch): # Max width keeping 2:1 roughly
-
+    def add_image(self, img_bytes, width=7.9*inch, height=None):
+        from reportlab.lib.utils import ImageReader
+        
         if img_bytes:
-            im = Image(img_bytes, width=width, height=height)
+            # Read the true aspect ratio from the matplotlib image stream
+            img_reader = ImageReader(img_bytes)
+            orig_width, orig_height = img_reader.getSize()
+            aspect_ratio = orig_height / orig_width
+            
+            # Autocalculate height if not strictly forced
+            if height is None:
+                calc_height = width * aspect_ratio
+            else:
+                calc_height = height
+                
+            im = Image(img_bytes, width=width, height=calc_height)
             self.elements.append(im)
             self.elements.append(Spacer(1, 12))
 

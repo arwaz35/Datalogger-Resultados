@@ -151,8 +151,21 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - **Retorno al menú principal**: A cada módulo se le agregó un botón en la esquina inferior izquierda (`⬅ Regresar`) para volver instantáneamente a la selección principal.
 - **Control de Versiones (`version.py`)**: Debido al cambio sustancial en el "core" de la navegación e interfaz, se ha incrementado el sistema directo a su **Versión 2.0.0**.
 
+### 📄 Estandarización de PDF y Pruebas (v2.1.0)
+- **Corrección de Proporciones Gráficas**: Se modificó el `reporter.py` para usar `ImageReader`, calculando dinámicamente el `aspect_ratio` real de las gráficas entregadas por `matplotlib` para prevenir estiramientos en el PDF.
+- **Redimensionamiento de Gráficas**: Se modificó `plotter.py` estableciendo un alto de figura menor (`figsize=(15, 3)`) para RPM y Aceleración, garantizando que ambas encajen perfectamente en una misma hoja junto a la gráfica principal de Velocidad.
+- **Titulación Dinámica (PDF)**: Se parametrizó `reporter.add_header` para que el título siga estrictamente la convención solicitada: `- Prueba de "[tipo]" del modelo "[Moto]" ("[Codigo]") -`.
+- **Refactorización de Prueba de Frenado**: 
+  - Se modificó `analyzer.py` para leer y asignar el grupo al que pertenece la prueba de frenado (40 km/h o 60 km/h ±5 km/h).
+  - Se reescribió la lógica interna en `analysis_controller.py` > `evaluate_braking` para descartar pruebas fuera de los rangos.
+  - El PDF de frenado ahora genera estrictamente una "Hoja 1" con el resumen comparativo de los mejores 3 eventos de 40 km/h y 60 km/h combinados.
+  - La "Hoja 2" contiene el análisis detallado (Velocidad, RPM y Aceleración) del mejor evento de 40 km/h.
+  - La "Hoja 3" contiene el análisis detallado del mejor evento de 60 km/h.
+- **Simplificación de Aceleración**: Se eliminaron las gráficas segmentadas de la prueba de aceleración para concentrar el análisis en una sola página de detalle general por requerimiento del usuario.
+- **Control de Versiones**: Se actualizó a **v2.1.0** para reflejar estas integraciones estructurales en los reportes finales.
+
 ### 💻 Comandos Ejecutados
-*(Sin comandos ejecutados, solo refactorizaciones visuales profundas)*
+*(Sin comandos ejecutados, solo refactorizaciones algorítmicas y gráficas)*
 
 ### ⏳ Pendientes
 - Desarrollar la lógica y diseño de las ventanas vacías `Comparativo` y `Todas las pruebas` a futuro.

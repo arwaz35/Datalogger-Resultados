@@ -115,86 +115,34 @@ class AnalysisController:
                 lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
                 export_event_to_csv(event_obj, self.output_dir, moto_info, lugar_name, test_name="Frenado")
         
-        # 2. Group by Speed Range (40, 60, etc.)
-        # Logic: "toma la velocidad inicial y un rango de mas o menos 8km/h"
-        # New Logic: Validate that approach speed stays within range
-        
-        grouped_events = {} # { nominal_speed: [events] }
-        TOLERANCE = 8
-        
-        processed_indices = set()
-        for i, ev in enumerate(all_events):
-            if i in processed_indices: continue
-            
-            ref_speed = ev['initial_speed']
-            
-            # Check if this seed event ITSELF is valid? 
-            # We assume the seed defines the group. 
-            # But let's check if the seed's own approach was stable relative to its OWN start speed?
-            # Or just relative to the nominal group it forms?
-            # Let's assume the seed is valid enough to start a group.
-            
-            cluster = [ev]
-            processed_indices.add(i)
-            
-        # 2. Group by Speed Range using Nearest Nominal (Rounded to 10)
-        # Logic: Segment tests into buckets like 30, 40, 60 based on proximity.
-        # Then validate consistency within that target bucket.
-        
-        grouped_events = {} # { nominal_speed: [events] }
-        TOLERANCE = 8
+        # 2. Group strictly by 40 and 60 km/h
+        grouped_events = {40: [], 60: []}
         
         for ev in all_events:
-            # 1. Determine Nominal Target Speed
-            # Rounding to nearest 10: 31->30, 39->40.
-            # This ensures hard separation between 30 and 40 tests.
-            initial_speed = ev['initial_speed']
-            nominal = int(round(initial_speed / 10.0) * 10)
-            
-            # 2. Validate Consistency
-            # Check if the event actually belongs to this nominal group significantly
-            # and if the approach was stable relative to this TARGET.
-            
-            # Check range [Nominal - 8, Nominal + 8]
-            lower_bound = nominal - TOLERANCE
-            upper_bound = nominal + TOLERANCE
-            
-            # A. Is the start speed within tolerance? (Usually yes by rounding, unless tolerance < 5)
-            if not (lower_bound <= initial_speed <= upper_bound):
-                continue # Discard outlier (e.g. 49 km/h -> 50 nominal. If tolerance 8, [42, 58]. 49 ok. 
-                         # What if 44? 44->40. [32, 48]. 44 ok.
-                         # What if super outlier?)
-            
-            # B. Check Approach Stability against the NOMINAL target
-            # Ensure the rider was aiming for 'nominal' and held it steady.
-            app_min = ev['approach_speeds'].min()
-            app_max = ev['approach_speeds'].max()
-            
-            if (app_min >= lower_bound) and (app_max <= upper_bound):
-                if nominal not in grouped_events:
-                    grouped_events[nominal] = []
-                grouped_events[nominal].append(ev)
+            g = ev['metrics'].get('group', 0)
+            if g in [40, 60]:
+                grouped_events[g].append(ev)
             else:
-                # Event discarded because approach was too unstable or out of target range
-                # print(f"Discarding event aiming for {nominal}: Unstable approach [{app_min:.1f}, {app_max:.1f}]")
-                pass
+                pass # Discard outlier speeds
+                
+        if not grouped_events[40] and not grouped_events[60]:
+            return False, "No se encontraron eventos válidos en los rangos de 40 km/h o 60 km/h."
             
-        # --- PREVIEW SECTIONS PREPARATION ---
-        sections = []
-        
+        # Select best 3 per group
+        best_events_per_group = {}
+        for g in [40, 60]:
+            if grouped_events[g]:
+                sorted_by_dist = sorted(grouped_events[g], key=lambda x: x['metrics']['dist_m'])
+                best_events_per_group[g] = sorted_by_dist[:3]
+            else:
+                best_events_per_group[g] = []
+                
         # --- RANKING LOGIC ---
         ranking_entries = []
         if len(inputs) >= 3:
-            def get_best_event(nominal_speed):
-                if nominal_speed in grouped_events:
-                    events = grouped_events[nominal_speed]
-                    if events:
-                        return min(events, key=lambda x: x['metrics']['dist_m'])
-                return None
-
-            for target_speed in [40, 60]:
-                best_evt = get_best_event(target_speed)
-                if best_evt:
+            for g in [40, 60]:
+                if best_events_per_group[g]:
+                    best_evt = best_events_per_group[g][0]
                     try:
                         moto_w = float(moto_info.get('Peso (Kg)', 0))
                         pilot_w = float(best_evt['weight'])
@@ -204,7 +152,7 @@ class AnalysisController:
                         
                     entry = {
                         'fecha': pd.Timestamp.now().strftime("%Y-%m-%d"),
-                        'target_speed': target_speed,
+                        'target_speed': g,
                         'moto_nombre': moto_info.get('Nombre Comercial', ''),
                         'moto_codigo': moto_info.get('Código Modelo', ''),
                         'moto_placa': moto_info.get('Placa', ''),
@@ -221,77 +169,66 @@ class AnalysisController:
                         }
                     }
                     ranking_entries.append(entry)
-
-        sorted_speeds = sorted(grouped_events.keys())
+                    
+        # --- PREVIEW SECTIONS PREPARATION ---
+        sections = []
         
-        for speed in sorted_speeds:
-            events = grouped_events[speed]
-            if not events: continue
-            
-            # --- Combined Analysis ---
-            num_files = len(inputs)
-            selected_events_for_combined = []
-            if num_files == 1:
-                sorted_by_dist = sorted(events, key=lambda x: x['metrics']['dist_m'])
-                selected_events_for_combined = sorted_by_dist[:3]
-            else:
-                pilot_map = {}
-                for e in events:
-                    p = e['pilot']
-                    if p not in pilot_map: pilot_map[p] = []
-                    pilot_map[p].append(e)
-                for p, p_events in pilot_map.items():
-                    best = min(p_events, key=lambda x: x['metrics']['dist_m'])
-                    selected_events_for_combined.append(best)
-            
-            img_buf = Plotter.plot_speed_vs_time(selected_events_for_combined, f"Velocidad vs Tiempo ({speed} km/h)")
-            
-            table_data_combined = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
-            for i, ev in enumerate(selected_events_for_combined):
-                # Braking v_final is usually 0, but we can extract it if needed or assume 0 for Braking.
-                v_start = ev['initial_speed']
-                v_final = 0.0
-                m = ev['metrics']
-                row = [
-                    f"Evento {i+1} ({ev['pilot']})",
-                    f"{v_start:.2f}",
-                    f"{v_final:.2f}",
-                    f"{m['time_s']:.2f}",
-                    f"{m['dist_m']:.2f}",
-                    f"{m['avg_acc']:.2f}",
-                    f"{int(m.get('top_rpm', 0))}"
-                ]
-                table_data_combined.append(row)
+        # --- HOJA 1: Resumen Combinado ---
+        combined_top_events = []
+        table_data_combined = [['Evento', 'Grupo', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
+        
+        for g in [40, 60]:
+            if best_events_per_group[g]:
+                combined_top_events.extend(best_events_per_group[g])
+                for i, ev in enumerate(best_events_per_group[g]):
+                    m = ev['metrics']
+                    row = [
+                        f"{ev['pilot']} ({i+1})",
+                        f"{g} km/h",
+                        f"{m['v_start']:.2f}",
+                        "0.00",
+                        f"{m['time_s']:.2f}",
+                        f"{m['dist_m']:.2f}",
+                        f"{m['avg_acc']:.2f}",
+                        f"{int(m.get('top_rpm', 0))}"
+                    ]
+                    table_data_combined.append(row)
+                    
+        # Add Hoja 1
+        img_buf_combined = Plotter.plot_speed_vs_time(combined_top_events, "Comparativa Velocidad vs Tiempo (Todos los mejores)")
+        sections.append({
+            "title": "Resumen de Frenado - (Top 3 de 40 km/h y 60 km/h)",
+            "images": [img_buf_combined.getvalue() if hasattr(img_buf_combined, 'getvalue') else img_buf_combined],
+            "table_data": table_data_combined
+        })
+        
+        # --- HOJA 2 y 3: Detalles de Mejor Evento (40 y 60) ---
+        for g in [40, 60]:
+            if best_events_per_group[g]:
+                global_best = best_events_per_group[g][0]
                 
-            # --- Single Best Analysis ---
-            global_best = min(events, key=lambda x: x['metrics']['dist_m'])
-            
-            img_buf1 = Plotter.plot_speed_vs_time([global_best], "Velocidad vs Tiempo (Mejor Evento)")
-            img_buf2 = Plotter.plot_accel_vs_time(global_best, "Aceleración vs Tiempo")
-            
-            m = global_best['metrics']
-            single_table = [
-                ['Métrica', 'Valor'],
-                ['Distancia Total', f"{m['dist_m']:.2f} m"],
-                ['Tiempo Frenado', f"{m['time_s']:.2f} s"],
-                ['Aceleración Prom', f"{m['avg_acc']:.2f} m/s²"],
-                ['Velocidad Inicial', f"{global_best['initial_speed']:.2f} km/h"]
-            ]
-            
-            sections.append({
-                "title": f"Frenado a {speed} km/h - Resumen ({len(selected_events_for_combined)} eventos)",
-                "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
-                "table_data": table_data_combined
-            })
-            
-            sections.append({
-                "title": f"Frenado a {speed} km/h - Mejor Evento ({global_best['pilot']})",
-                "images": [
-                    img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1, 
-                    img_buf2.getvalue() if hasattr(img_buf2, 'getvalue') else img_buf2
-                ],
-                "table_data": single_table
-            })
+                img_buf_v = Plotter.plot_speed_vs_time([global_best], f"Velocidad vs Tiempo (Mejor {g} km/h)")
+                img_buf_rpm = None
+                if 'RPM' in global_best['df'].columns:
+                    img_buf_rpm = Plotter.plot_rpm_vs_time(global_best, f"RPM vs Tiempo (Mejor {g} km/h)")
+                img_buf_acc = Plotter.plot_accel_vs_time(global_best, f"Aceleración vs Tiempo (Mejor {g} km/h)")
+                
+                m = global_best['metrics']
+                single_table = [
+                    ['V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM'],
+                    [f"{m['v_start']:.2f}", "0.00", f"{m['time_s']:.2f}", f"{m['dist_m']:.2f}", f"{m['avg_acc']:.2f}", f"{int(m.get('top_rpm', 0))}"]
+                ]
+                
+                images = [img_buf_v.getvalue() if hasattr(img_buf_v, 'getvalue') else img_buf_v]
+                if img_buf_rpm:
+                    images.append(img_buf_rpm.getvalue() if hasattr(img_buf_rpm, 'getvalue') else img_buf_rpm)
+                images.append(img_buf_acc.getvalue() if hasattr(img_buf_acc, 'getvalue') else img_buf_acc)
+                
+                sections.append({
+                    "title": f"Frenado a {g} km/h - Análisis del Mejor Evento ({global_best['pilot']})",
+                    "images": images,
+                    "table_data": single_table
+                })
 
         # Save the dataset for the PDF generation
         preview_data = {
@@ -348,12 +285,8 @@ class AnalysisController:
         
         reporter = PDFReporter(filepath)
                 
-        # Depending on test type, set the title
-        title = "Prueba de Rendimiento"
-        if preview_data['type'] == "braking":
-            title = f"Prueba de frenado del modelo {moto_info.get('Nombre Comercial', '')}"
-            
-        reporter.add_header(moto_info, pilots_info, comments, env_conditions, title=title)
+        # Depending on test type, pass the mapped name to formatting logic
+        reporter.add_header(moto_info, pilots_info, comments, env_conditions, test_type=prueba_name)
         
         for sec in sections:
             reporter.add_section(sec['title'])
@@ -514,21 +447,7 @@ class AnalysisController:
             "table_data": table_segments
         })
         
-        # Segments Detailed Plots
-        img_seg1 = Plotter.plot_segment_group(best_event, [(0,20), (20,40)], "Tramos 0-20 y 20-40 km/h")
-        img_seg2 = Plotter.plot_segment_group(best_event, [(40,60), (60,80)], "Tramos 40-60 y 60-80 km/h")
-        
-        sections.append({
-            "title": "Gráficas por Tramos 0-40 km/h",
-            "images": [img_seg1.getvalue() if hasattr(img_seg1, 'getvalue') else img_seg1],
-            "table_data": None
-        })
-        
-        sections.append({
-            "title": "Gráficas por Tramos 40-80 km/h",
-            "images": [img_seg2.getvalue() if hasattr(img_seg2, 'getvalue') else img_seg2],
-            "table_data": None
-        })
+        # Se removieron los gráficos de tramos detallados a petición del usuario.
         
         preview_data = {
             "type": "acceleration",
