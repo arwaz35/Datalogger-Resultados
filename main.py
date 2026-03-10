@@ -43,20 +43,49 @@ class App(ctk.CTk):
         self.clear_window()
         
         menu_frame = ctk.CTkFrame(self, fg_color="transparent")
-        menu_frame.place(relx=0.5, rely=0.5, anchor="center")
+        menu_frame.place(relx=0.5, rely=0.4, anchor="center")
         
         ctk.CTkLabel(menu_frame, text="Sistema de Análisis Incol", font=("Arial", 32, "bold")).pack(pady=40)
         ctk.CTkLabel(menu_frame, text="Seleccione el tipo de programa a ejecutar:", font=("Arial", 18)).pack(pady=20)
         
         btn_font = ("Arial", 16, "bold")
-        ctk.CTkButton(menu_frame, text="Comparativo", font=btn_font, width=300, height=60, 
-                      command=self.show_comparativo_view).pack(pady=15)
+        
+        # Main Execution Buttons Flow
+        exec_frame = ctk.CTkFrame(menu_frame, fg_color="transparent")
+        exec_frame.pack(pady=10)
+        
+        ctk.CTkButton(exec_frame, text="Comparativo", font=btn_font, width=250, height=50, 
+                      command=self.show_comparativo_view).pack(side="left", padx=10)
                       
-        ctk.CTkButton(menu_frame, text="Todas las pruebas", font=btn_font, width=300, height=60, 
-                      command=self.show_todas_pruebas_view).pack(pady=15)
+        ctk.CTkButton(exec_frame, text="Todas las pruebas", font=btn_font, width=250, height=50, 
+                      command=self.show_todas_pruebas_view).pack(side="left", padx=10)
                       
-        ctk.CTkButton(menu_frame, text="Individual", font=btn_font, width=300, height=60, 
-                      command=self.show_individual_view).pack(pady=15)
+        ctk.CTkButton(exec_frame, text="Individual", font=btn_font, width=250, height=50, 
+                      command=self.show_individual_view).pack(side="left", padx=10)
+
+        # Config & Ranking Area
+        secondary_frame = ctk.CTkFrame(menu_frame, fg_color="transparent")
+        secondary_frame.pack(pady=10)
+        
+        ctk.CTkButton(secondary_frame, text="🏆 Ranking de Frenado", font=("Arial", 16, "bold"), width=300, height=50, fg_color="purple", hover_color="#300030",
+                      command=self.open_ranking_window).pack(pady=10)
+
+        # Management Setup Bottom Area
+        admin_frame = ctk.CTkFrame(self, fg_color="transparent")
+        admin_frame.pack(side="bottom", fill="x", pady=40)
+        
+        mgmt_font = ("Arial", 14, "bold")
+        inner_admin = ctk.CTkFrame(admin_frame, fg_color="transparent")
+        inner_admin.pack(anchor="center")
+        
+        ctk.CTkButton(inner_admin, text="Gestión de Motos", font=mgmt_font, width=180, height=40, fg_color="#3B8ED0", hover_color="#1F6AA5",
+                      command=self.show_gestion_motos_view).pack(side="left", padx=15)
+        
+        ctk.CTkButton(inner_admin, text="Gestión de Lugares", font=mgmt_font, width=180, height=40, fg_color="#3B8ED0", hover_color="#1F6AA5",
+                      command=self.show_gestion_lugares_view).pack(side="left", padx=15)
+                      
+        ctk.CTkButton(inner_admin, text="Gestión de Pilotos", font=mgmt_font, width=180, height=40, fg_color="#3B8ED0", hover_color="#1F6AA5",
+                      command=self.show_gestion_pilotos_view).pack(side="left", padx=15)
 
     def show_comparativo_view(self):
         self.clear_window()
@@ -98,12 +127,7 @@ class App(ctk.CTk):
         self.moto_combo = ctk.CTkComboBox(self.moto_row, values=["Seleccione Moto..."], width=250)
         self.moto_combo.pack(side="left", padx=5)
         
-        ctk.CTkButton(self.moto_row, text="Nueva Moto", command=self.open_new_moto_window, width=100).pack(side="left", padx=5)
         ctk.CTkButton(self.moto_row, text="Actualizar Lista", command=self.refresh_motos, width=100).pack(side="left", padx=5)
-        
-        # Ranking Button & Gestor Pilotos
-        ctk.CTkButton(self.moto_row, text="Ranking Frenos", command=self.open_ranking_window, fg_color="purple", hover_color="#300030", width=120).pack(side="right", padx=5)
-        ctk.CTkButton(self.moto_row, text="Gestionar Pilotos", command=self.open_pilot_manager, width=120).pack(side="right", padx=5)
         
         # Lugar Row
         self.lugar_row = ctk.CTkFrame(self.top_frame, fg_color="transparent")
@@ -113,7 +137,6 @@ class App(ctk.CTk):
         self.lugar_combo = ctk.CTkComboBox(self.lugar_row, values=["Seleccione Lugar..."], width=250)
         self.lugar_combo.pack(side="left", padx=5)
         
-        ctk.CTkButton(self.lugar_row, text="Nuevo Lugar", command=self.open_new_lugar_window, width=100).pack(side="left", padx=5)
         ctk.CTkButton(self.lugar_row, text="Actualizar Lugares", command=self.refresh_lugares, width=100).pack(side="left", padx=5)
 
         # --- 2. Test Selection (Segmented Button) ---
@@ -208,100 +231,335 @@ class App(ctk.CTk):
         self.lugar_combo.configure(values=values)
         self.lugar_values_map = lugares
 
-    def open_new_lugar_window(self):
-        win = ctk.CTkToplevel(self)
-        win.title("Agregar Lugar de Prueba")
-        win.geometry("400x350")
-        win.attributes("-topmost", True)
-        
-        fields = ["Nombre", "Altitud (msnm)", "Coordenadas (Lat, Lon)"]
-        entries = {}
-        
-        for f in fields:
-            row = ctk.CTkFrame(win)
-            row.pack(fill="x", padx=10, pady=10)
-            ctk.CTkLabel(row, text=f).pack(side="left", padx=5)
-            e = ctk.CTkEntry(row)
-            e.pack(side="right", fill="x", expand=True, padx=5)
-            entries[f] = e
-            
-        def save():
-            data = {f: entries[f].get() for f in fields}
-            # Simple validation
-            if not data['Nombre']:
-                messagebox.showerror("Error", "El nombre es obligatorio.", parent=win)
-                return
-            self.data_manager.add_lugar(data)
-            self.refresh_lugares()
-            win.destroy()
-            
-        ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
-
     def refresh_motos(self):
         motos = self.data_manager.load_motos()
         values = [f"{m.get('Nombre Comercial','')} - {m.get('Placa','')}" for m in motos]
         if not values: values = ["Sin motos registradas"]
-        self.moto_combo.configure(values=values)
+        if hasattr(self, 'moto_combo') and self.moto_combo.winfo_exists():
+            self.moto_combo.configure(values=values)
         self.moto_values_map = motos
 
-    def open_new_moto_window(self):
-        win = ctk.CTkToplevel(self)
-        win.title("Agregar Motocicleta")
-        win.geometry("400x500")
-        win.attributes("-topmost", True)
+    # --- NUEVAS VISTAS DE GESTION ---
+    
+    def show_gestion_motos_view(self):
+        self.clear_window()
         
-        fields = ["Fecha", "Nombre Comercial", "Placa", "Código Modelo", "Cilindraje (cc)", "Peso (Kg)", "Potencia (Hp)", "Torque (Nm)"]
-        entries = {}
+        ctk.CTkLabel(self, text="Gestión de Motocicletas", font=("Arial", 24, "bold")).pack(pady=20)
         
-        for f in fields:
-            row = ctk.CTkFrame(win)
-            row.pack(fill="x", padx=10, pady=5)
-            ctk.CTkLabel(row, text=f).pack(side="left", padx=5)
-            e = ctk.CTkEntry(row)
-            e.pack(side="right", fill="x", expand=True, padx=5)
-            entries[f] = e
+        # Table Frame
+        table_frame = ctk.CTkScrollableFrame(self)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        headers = ["Nom. Comercial", "Cod. Modelo", "Placa", "Cilindraje", "Peso(Kg)", "Potencia", "Torque"]
+        widths = [200, 150, 100, 100, 100, 100, 100]
+        
+        header_f = ctk.CTkFrame(table_frame, fg_color="gray30")
+        header_f.pack(fill="x", pady=2)
+        for i, h in enumerate(headers):
+            ctk.CTkLabel(header_f, text=h, width=widths[i], font=("Arial", 12, "bold")).pack(side="left", padx=2)
             
-        def save():
-            data = {f: entries[f].get() for f in fields}
-            self.data_manager.add_moto(data)
-            self.refresh_motos()
-            win.destroy()
+        selected_idx = {'val': None, 'widget': None}
+        
+        def refresh_table():
+            for w in table_frame.winfo_children():
+                if w != header_f: w.destroy()
             
-        ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
-
-    def open_pilot_manager(self):
-        win = ctk.CTkToplevel(self)
-        win.title("Gestionar Pilotos")
-        win.geometry("300x400")
-        win.attributes("-topmost", True)
-        
-        entry = ctk.CTkEntry(win, placeholder_text="Nombre del piloto")
-        entry.pack(pady=10, padx=10, fill="x")
-        
-        def add():
-            name = entry.get()
-            if name:
-                self.data_manager.add_piloto(name)
-                refresh_list()
-                # Notify active module to refresh if it has pilots
-                if hasattr(self.active_module, 'refresh_pilots'):
-                    self.active_module.refresh_pilots()
-                entry.delete(0, "end")
+            motos = self.data_manager.load_motos()
+            selected_idx['val'], selected_idx['widget'] = None, None
+            btn_eliminar.configure(state="disabled")
+            
+            def select_row(idx, row_widget):
+                if selected_idx['widget']:
+                    try: selected_idx['widget'].configure(fg_color=["gray86", "gray17"])
+                    except: pass
+                selected_idx['val'] = idx
+                selected_idx['widget'] = row_widget
+                row_widget.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+                btn_eliminar.configure(state="normal")
                 
-        ctk.CTkButton(win, text="Agregar", command=add).pack(pady=5)
+            for i, m in enumerate(motos):
+                row = ctk.CTkFrame(table_frame)
+                row.pack(fill="x", pady=1)
+                row.bind("<Button-1>", lambda e, x=i, r=row: select_row(x, r))
+                
+                vals = [m.get('Nombre Comercial',''), m.get('Código Modelo',''), m.get('Placa',''),
+                        m.get('Cilindraje (cc)',''), m.get('Peso (Kg)',''), m.get('Potencia (Hp)',''), m.get('Torque (Nm)','')]
+                
+                for j, v in enumerate(vals):
+                    lbl = ctk.CTkLabel(row, text=v, width=widths[j])
+                    lbl.pack(side="left", padx=2)
+                    lbl.bind("<Button-1>", lambda e, x=i, r=row: select_row(x, r))
+
+        # Controls
+        ctrl = ctk.CTkFrame(self, fg_color="transparent")
+        ctrl.pack(fill="x", padx=20, pady=10)
         
-        list_frame = ctk.CTkScrollableFrame(win)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        def start_add_moto():
+            win = ctk.CTkToplevel(self)
+            win.title("Agregar Motocicleta")
+            win.geometry("400x500")
+            win.attributes("-topmost", True)
+            
+            fields = ["Fecha", "Nombre Comercial", "Placa", "Código Modelo", "Cilindraje (cc)", "Peso (Kg)", "Potencia (Hp)", "Torque (Nm)"]
+            entries = {}
+            for f in fields:
+                r = ctk.CTkFrame(win)
+                r.pack(fill="x", padx=10, pady=5)
+                ctk.CTkLabel(r, text=f).pack(side="left", padx=5)
+                e = ctk.CTkEntry(r)
+                e.pack(side="right", fill="x", expand=True, padx=5)
+                entries[f] = e
+            def save():
+                data = {f: entries[f].get() for f in fields}
+                self.data_manager.add_moto(data)
+                refresh_table()
+                win.destroy()
+            ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
+
+        def delete_moto():
+            if selected_idx['val'] is not None:
+                if messagebox.askyesno("Confirmar", "¿Eliminar motocicleta seleccionada?"):
+                    self.data_manager.delete_moto(selected_idx['val'])
+                    refresh_table()
+
+        ctk.CTkButton(ctrl, text="Agregar Moto", font=("Arial", 14, "bold"), command=start_add_moto).pack(side="left", padx=10)
+        btn_eliminar = ctk.CTkButton(ctrl, text="Eliminar Moto", font=("Arial", 14, "bold"), fg_color="red", hover_color="darkred", state="disabled", command=delete_moto)
+        btn_eliminar.pack(side="right", padx=10)
         
-        def refresh_list():
-            for widget in list_frame.winfo_children(): widget.destroy()
-            pilots = self.data_manager.load_pilotos()
-            for p in pilots:
-                r = ctk.CTkFrame(list_frame)
-                r.pack(fill="x", pady=2)
-                ctk.CTkLabel(r, text=p).pack(side="left", padx=5)
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=20)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar", font=("Arial", 14, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
         
-        refresh_list()
+        refresh_table()
+
+    def show_gestion_lugares_view(self):
+        self.clear_window()
+        ctk.CTkLabel(self, text="Gestión de Lugares", font=("Arial", 24, "bold")).pack(pady=20)
+        
+        table_frame = ctk.CTkScrollableFrame(self)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        headers = ["Nombre del Lugar", "Altitud (msnm)", "Coordenadas"]
+        widths = [300, 150, 400]
+        
+        header_f = ctk.CTkFrame(table_frame, fg_color="gray30")
+        header_f.pack(fill="x", pady=2)
+        for i, h in enumerate(headers):
+            ctk.CTkLabel(header_f, text=h, width=widths[i], font=("Arial", 12, "bold")).pack(side="left", padx=2)
+            
+        selected_idx = {'val': None, 'widget': None}
+        
+        def refresh_table():
+            for w in table_frame.winfo_children():
+                if w != header_f: w.destroy()
+            
+            lugares = self.data_manager.load_lugares()
+            selected_idx['val'], selected_idx['widget'] = None, None
+            btn_eliminar.configure(state="disabled")
+            
+            def select_row(idx, row_widget):
+                if selected_idx['widget']:
+                    try: selected_idx['widget'].configure(fg_color=["gray86", "gray17"])
+                    except: pass
+                selected_idx['val'] = idx
+                selected_idx['widget'] = row_widget
+                row_widget.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+                btn_eliminar.configure(state="normal")
+                
+            for i, l in enumerate(lugares):
+                row = ctk.CTkFrame(table_frame)
+                row.pack(fill="x", pady=1)
+                row.bind("<Button-1>", lambda e, x=i, r=row: select_row(x, r))
+                
+                vals = [l.get('Nombre',''), l.get('Altitud (msnm)',''), l.get('Coordenadas (Lat, Lon)','')]
+                
+                for j, v in enumerate(vals):
+                    lbl = ctk.CTkLabel(row, text=v, width=widths[j])
+                    lbl.pack(side="left", padx=2)
+                    lbl.bind("<Button-1>", lambda e, x=i, r=row: select_row(x, r))
+
+        ctrl = ctk.CTkFrame(self, fg_color="transparent")
+        ctrl.pack(fill="x", padx=20, pady=10)
+
+        def start_add_lugar():
+            win = ctk.CTkToplevel(self)
+            win.title("Agregar Lugar")
+            win.geometry("400x300")
+            win.attributes("-topmost", True)
+            fields = ["Nombre", "Altitud (msnm)", "Coordenadas (Lat, Lon)"]
+            entries = {}
+            for f in fields:
+                r = ctk.CTkFrame(win)
+                r.pack(fill="x", padx=10, pady=10)
+                ctk.CTkLabel(r, text=f).pack(side="left", padx=5)
+                e = ctk.CTkEntry(r)
+                e.pack(side="right", fill="x", expand=True, padx=5)
+                entries[f] = e
+            def save():
+                data = {f: entries[f].get() for f in fields}
+                if not data['Nombre']:
+                    messagebox.showerror("Error", "Nombre es obligatorio", parent=win)
+                    return
+                self.data_manager.add_lugar(data)
+                refresh_table()
+                win.destroy()
+            ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
+
+        def delete_lugar():
+            if selected_idx['val'] is not None:
+                if messagebox.askyesno("Confirmar", "¿Eliminar lugar seleccionado?"):
+                    self.data_manager.delete_lugar(selected_idx['val'])
+                    refresh_table()
+
+        ctk.CTkButton(ctrl, text="Agregar Lugar", font=("Arial", 14, "bold"), command=start_add_lugar).pack(side="left", padx=10)
+        btn_eliminar = ctk.CTkButton(ctrl, text="Eliminar Lugar", font=("Arial", 14, "bold"), fg_color="red", hover_color="darkred", state="disabled", command=delete_lugar)
+        btn_eliminar.pack(side="right", padx=10)
+        
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=20)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar", font=("Arial", 14, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
+        
+        refresh_table()
+
+    def show_gestion_pilotos_view(self):
+        self.clear_window()
+        ctk.CTkLabel(self, text="Gestión de Pilotos", font=("Arial", 24, "bold")).pack(pady=20)
+        
+        table_frame = ctk.CTkScrollableFrame(self)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        headers = ["Nombre del Piloto", "Peso Acumulado (Kg)"]
+        widths = [400, 200]
+        
+        header_f = ctk.CTkFrame(table_frame, fg_color="gray30")
+        header_f.pack(fill="x", pady=2)
+        for i, h in enumerate(headers):
+            ctk.CTkLabel(header_f, text=h, width=widths[i], font=("Arial", 12, "bold")).pack(side="left", padx=2)
+            
+        selected_idx = {'nombre': None, 'widget': None, 'peso': 0}
+        
+        def refresh_table():
+            for w in table_frame.winfo_children():
+                if w != header_f: w.destroy()
+            
+            pilotos = self.data_manager.load_pilotos()
+            selected_idx['nombre'], selected_idx['widget'] = None, None
+            btn_eliminar.configure(state="disabled")
+            btn_actualizar.configure(state="disabled")
+            
+            def select_row(nombre, peso, row_widget):
+                if selected_idx['widget']:
+                    try: selected_idx['widget'].configure(fg_color=["gray86", "gray17"])
+                    except: pass
+                selected_idx['nombre'] = nombre
+                selected_idx['peso'] = peso
+                selected_idx['widget'] = row_widget
+                row_widget.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+                btn_eliminar.configure(state="normal")
+                btn_actualizar.configure(state="normal")
+                
+            for p in pilotos:
+                row = ctk.CTkFrame(table_frame)
+                row.pack(fill="x", pady=1)
+                
+                nom = p.get('nombre', '')
+                pes = p.get('peso', 0)
+                
+                row.bind("<Button-1>", lambda e, n=nom, w=pes, r=row: select_row(n, w, r))
+                
+                vals = [nom, str(pes)]
+                
+                for j, v in enumerate(vals):
+                    lbl = ctk.CTkLabel(row, text=v, width=widths[j])
+                    lbl.pack(side="left", padx=2)
+                    lbl.bind("<Button-1>", lambda e, n=nom, w=pes, r=row: select_row(n, w, r))
+
+        ctrl = ctk.CTkFrame(self, fg_color="transparent")
+        ctrl.pack(fill="x", padx=20, pady=10)
+
+        def start_add_piloto():
+            win = ctk.CTkToplevel(self)
+            win.title("Agregar Piloto")
+            win.geometry("400x200")
+            win.attributes("-topmost", True)
+            
+            r1 = ctk.CTkFrame(win)
+            r1.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r1, text="Nombre:").pack(side="left", padx=5)
+            e_n = ctk.CTkEntry(r1)
+            e_n.pack(side="right", fill="x", expand=True, padx=5)
+            
+            r2 = ctk.CTkFrame(win)
+            r2.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r2, text="Peso (Kg):").pack(side="left", padx=5)
+            e_p = ctk.CTkEntry(r2)
+            e_p.pack(side="right", fill="x", expand=True, padx=5)
+            
+            def save():
+                npm = e_n.get().strip()
+                try: p_val = float(e_p.get().replace(',','.')) if e_p.get() else 0.0
+                except ValueError: p_val = 0.0
+                
+                if not npm:
+                    messagebox.showerror("Error", "Nombre es obligatorio", parent=win)
+                    return
+                self.data_manager.add_piloto(npm, p_val)
+                refresh_table()
+                win.destroy()
+            ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
+
+        def start_update_piloto():
+            if selected_idx['nombre'] is None: return
+            win = ctk.CTkToplevel(self)
+            win.title("Actualizar Piloto")
+            win.geometry("400x200")
+            win.attributes("-topmost", True)
+            
+            old_name = selected_idx['nombre']
+            old_weight = selected_idx['peso']
+            
+            r1 = ctk.CTkFrame(win)
+            r1.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r1, text="Nombre:").pack(side="left", padx=5)
+            e_n = ctk.CTkEntry(r1)
+            e_n.pack(side="right", fill="x", expand=True, padx=5)
+            e_n.insert(0, old_name)
+            
+            r2 = ctk.CTkFrame(win)
+            r2.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r2, text="Peso (Kg):").pack(side="left", padx=5)
+            e_p = ctk.CTkEntry(r2)
+            e_p.pack(side="right", fill="x", expand=True, padx=5)
+            e_p.insert(0, str(old_weight))
+            
+            def save():
+                npm = e_n.get().strip()
+                try: p_val = float(e_p.get().replace(',','.')) if e_p.get() else 0.0
+                except ValueError: p_val = 0.0
+                
+                if not npm: return
+                self.data_manager.update_piloto(old_name, npm, p_val)
+                refresh_table()
+                win.destroy()
+            ctk.CTkButton(win, text="Actualizar", command=save).pack(pady=20)
+
+        def delete_piloto():
+            if selected_idx['nombre'] is not None:
+                if messagebox.askyesno("Confirmar", "¿Eliminar piloto seleccionado?"):
+                    self.data_manager.delete_piloto(selected_idx['nombre'])
+                    refresh_table()
+
+        ctk.CTkButton(ctrl, text="Agregar Piloto", font=("Arial", 14, "bold"), command=start_add_piloto).pack(side="left", padx=10)
+        btn_actualizar = ctk.CTkButton(ctrl, text="Actualizar Datos", font=("Arial", 14, "bold"), fg_color="#F29F05", hover_color="#C27A04", text_color="black", state="disabled", command=start_update_piloto)
+        btn_actualizar.pack(side="left", padx=10)
+        btn_eliminar = ctk.CTkButton(ctrl, text="Eliminar Piloto", font=("Arial", 14, "bold"), fg_color="red", hover_color="darkred", state="disabled", command=delete_piloto)
+        btn_eliminar.pack(side="right", padx=10)
+        
+        bottom_nav = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_nav.pack(fill="x", side="bottom", padx=10, pady=20)
+        ctk.CTkButton(bottom_nav, text="⬅ Regresar", font=("Arial", 14, "bold"), fg_color="gray", hover_color="darkgray", command=self.show_main_menu).pack(side="left")
+        
+        refresh_table()
 
     def open_ranking_window(self):
         # Moved logic, kept same as before

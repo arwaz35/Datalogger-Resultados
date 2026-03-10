@@ -21,17 +21,13 @@ class ClimbingTest(ctk.CTkFrame):
         
         ctk.CTkLabel(self.solo_frame, text="Sección 1: Solo Piloto (Seleccionar 1 Archivo)", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=5)
         
-        # Row 1: Pilot & Weight
+        # Row 1: Pilot
         row1 = ctk.CTkFrame(self.solo_frame, fg_color="transparent")
         row1.pack(fill="x", padx=5, pady=2)
         
         ctk.CTkLabel(row1, text="Piloto:").pack(side="left", padx=5)
         self.solo_pilot_combo = ctk.CTkComboBox(row1, values=["Seleccione Piloto..."], width=200)
         self.solo_pilot_combo.pack(side="left", padx=5)
-        
-        ctk.CTkLabel(row1, text="Peso (Kg):").pack(side="left", padx=5)
-        self.solo_weight_entry = ctk.CTkEntry(row1, width=60)
-        self.solo_weight_entry.pack(side="left", padx=5)
         
         # Row 2: File
         row2 = ctk.CTkFrame(self.solo_frame, fg_color="transparent")
@@ -61,20 +57,12 @@ class ClimbingTest(ctk.CTkFrame):
         self.pp_passenger_combo = ctk.CTkComboBox(row3, values=["Seleccione Pasajero..."], width=150)
         self.pp_passenger_combo.pack(side="left", padx=5)
         
-        # Row 2: Weights
+        # Row 2: Weights (Extra only)
         row4 = ctk.CTkFrame(self.passenger_frame, fg_color="transparent")
         row4.pack(fill="x", padx=5, pady=2)
         
-        ctk.CTkLabel(row4, text="Peso Piloto (Kg):").pack(side="left", padx=5)
-        self.pp_pilot_weight = ctk.CTkEntry(row4, width=50)
-        self.pp_pilot_weight.pack(side="left", padx=5)
-        
-        ctk.CTkLabel(row4, text="Peso Pasajero (Kg):").pack(side="left", padx=5)
-        self.pp_pass_weight = ctk.CTkEntry(row4, width=50)
-        self.pp_pass_weight.pack(side="left", padx=5)
-        
         ctk.CTkLabel(row4, text="Peso Extra (Kg):").pack(side="left", padx=5)
-        self.pp_extra_weight = ctk.CTkEntry(row4, width=50)
+        self.pp_extra_weight = ctk.CTkEntry(row4, width=80)
         self.pp_extra_weight.pack(side="left", padx=5)
         
         # Row 3: File
@@ -99,24 +87,36 @@ class ClimbingTest(ctk.CTkFrame):
             entry_widget.insert(0, f)
 
     def refresh_pilots(self):
-        pilots = self.data_manager.load_pilotos()
-        if not pilots: pilots = ["Nuevo Piloto"]
+        pilotos_data = self.data_manager.load_pilotos()
+        pilots = [p.get('nombre') for p in pilotos_data] if pilotos_data else ["Nuevo Piloto"]
         
         # Update all 3 combos
         for combo in [self.solo_pilot_combo, self.pp_pilot_combo, self.pp_passenger_combo]:
             current = combo.get()
             combo.configure(values=pilots)
-            if current not in pilots and current != "Seleccione Piloto..." and current != "Seleccione Pasajero...":
-                combo.set("Seleccione Piloto...")
+            if current in pilots and current != "Seleccione Piloto..." and current != "Seleccione Pasajero...":
+                combo.set(current)
+            elif combo == self.pp_passenger_combo:
+                 combo.set("Seleccione Pasajero...")
+            else:
+                 combo.set("Seleccione Piloto...")
 
     def get_data(self):
+        pilotos_data = self.data_manager.load_pilotos()
+        
+        def get_pilot_weight(name):
+            for p in pilotos_data:
+                if p.get('nombre') == name: return float(p.get('peso', 0))
+            return 0.0
+
         # Validate Solo Section
         solo_data = None
         s_path = self.solo_file_entry.get()
         if s_path and os.path.exists(s_path):
+            p_name = self.solo_pilot_combo.get()
             solo_data = {
-                'pilot': self.solo_pilot_combo.get(),
-                'weight': self.solo_weight_entry.get(),
+                'pilot': p_name,
+                'weight': str(get_pilot_weight(p_name)),
                 'filepath': s_path,
                 'type': 'SOLO'
             }
@@ -125,14 +125,21 @@ class ClimbingTest(ctk.CTkFrame):
         passenger_data = None
         p_path = self.pp_file_entry.get()
         if p_path and os.path.exists(p_path):
+            pilot_name = self.pp_pilot_combo.get()
+            pass_name = self.pp_passenger_combo.get()
+            
+            p_w = get_pilot_weight(pilot_name)
+            pass_w = get_pilot_weight(pass_name)
+            extra_w = float(self.pp_extra_weight.get() or 0)
+            
             passenger_data = {
-                'pilot': self.pp_pilot_combo.get(),
-                'passenger': self.pp_passenger_combo.get(),
-                'pilot_weight': self.pp_pilot_weight.get(),
-                'pass_weight': self.pp_pass_weight.get(),
-                'extra_weight': self.pp_extra_weight.get(),
+                'pilot': pilot_name,
+                'passenger': pass_name,
+                'pilot_weight': str(p_w),
+                'pass_weight': str(pass_w),
+                'extra_weight': str(extra_w),
                 'filepath': p_path,
-                'weight': str(float(self.pp_pilot_weight.get() or 0) + float(self.pp_pass_weight.get() or 0) + float(self.pp_extra_weight.get() or 0)), # Total weight
+                'weight': str(p_w + pass_w + extra_w), # Total weight
                 'type': 'PASSENGER'
             }
             

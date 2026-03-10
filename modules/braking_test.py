@@ -32,10 +32,10 @@ class BrakingTest(ctk.CTkFrame):
         pilot_combo = ctk.CTkComboBox(row, values=["Seleccione Piloto..."], width=200)
         pilot_combo.pack(side="left", padx=5)
         
-        # Weight
-        ctk.CTkLabel(row, text="Peso (Kg):").pack(side="left", padx=5)
-        weight_entry = ctk.CTkEntry(row, width=60)
-        weight_entry.pack(side="left", padx=5)
+        # Weight (REMOVED)
+        # ctk.CTkLabel(row, text="Peso (Kg):").pack(side="left", padx=5)
+        # weight_entry = ctk.CTkEntry(row, width=60)
+        # weight_entry.pack(side="left", padx=5)
         
         # File Path
         path_entry = ctk.CTkEntry(row, width=300, placeholder_text="Ruta del archivo CSV...")
@@ -51,13 +51,12 @@ class BrakingTest(ctk.CTkFrame):
         
         self.file_inputs.append({
             'pilot': pilot_combo,
-            'weight': weight_entry,
             'path': path_entry
         })
 
     def refresh_pilots(self):
-        pilots = self.data_manager.load_pilotos()
-        if not pilots: pilots = ["Nuevo Piloto"]
+        pilotos_data = self.data_manager.load_pilotos()
+        pilots = [p.get('nombre') for p in pilotos_data] if pilotos_data else ["Nuevo Piloto"]
         
         for inp in self.file_inputs:
             p_combo = inp['pilot']
@@ -70,16 +69,24 @@ class BrakingTest(ctk.CTkFrame):
 
     def get_data(self):
         valid_inputs = []
+        pilotos_data = self.data_manager.load_pilotos()
+        
         for inp in self.file_inputs:
             path = inp['path'].get()
             pilot = inp['pilot'].get()
-            weight = inp['weight'].get()
             
             if path and os.path.exists(path) and pilot and pilot != "Seleccione Piloto...":
+                # Find exactly what weight the pilot has
+                weight = 0
+                for p_dict in pilotos_data:
+                    if p_dict.get('nombre') == pilot:
+                        weight = p_dict.get('peso', 0)
+                        break
+                        
                 valid_inputs.append({
                     'filepath': path,
                     'pilot': pilot,
-                    'weight': weight
+                    'weight': str(weight)
                 })
         return valid_inputs
 

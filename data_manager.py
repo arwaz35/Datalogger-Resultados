@@ -52,7 +52,22 @@ class DataManager:
     def load_pilotos(self):
         try:
             with open(PILOTOS_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                
+            # Migration check: if it's a list of strings, convert to dicts
+            migrated_data = []
+            modified = False
+            for item in data:
+                if isinstance(item, str):
+                    migrated_data.append({"nombre": item, "peso": 0})
+                    modified = True
+                else:
+                    migrated_data.append(item)
+                    
+            if modified:
+                self.save_pilotos(migrated_data)
+                
+            return migrated_data
         except:
             return []
 
@@ -60,17 +75,25 @@ class DataManager:
         with open(PILOTOS_FILE, 'w') as f:
             json.dump(pilotos, f, indent=4)
 
-    def add_piloto(self, nombre):
+    def add_piloto(self, nombre, peso=0):
         pilotos = self.load_pilotos()
-        if nombre not in pilotos: # Prevent duplicates
-            pilotos.append(nombre)
+        if not any(p.get('nombre') == nombre for p in pilotos): # Prevent duplicates
+            pilotos.append({"nombre": nombre, "peso": peso})
             self.save_pilotos(pilotos)
+
+    def update_piloto(self, old_nombre, new_nombre, new_peso):
+        pilotos = self.load_pilotos()
+        for p in pilotos:
+            if p.get('nombre') == old_nombre:
+                p['nombre'] = new_nombre
+                p['peso'] = new_peso
+                break
+        self.save_pilotos(pilotos)
 
     def delete_piloto(self, nombre):
         pilotos = self.load_pilotos()
-        if nombre in pilotos:
-            pilotos.remove(nombre)
-            self.save_pilotos(pilotos)
+        pilotos = [p for p in pilotos if p.get('nombre') != nombre]
+        self.save_pilotos(pilotos)
 
     # --- LUGARES METHODS ---
     def load_lugares(self):

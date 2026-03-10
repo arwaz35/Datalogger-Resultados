@@ -30,10 +30,10 @@ class TopSpeedTest(ctk.CTkFrame):
         self.pilot_combo = ctk.CTkComboBox(row, values=["Seleccione Piloto..."], width=200)
         self.pilot_combo.pack(side="left", padx=5)
         
-        # Weight
-        ctk.CTkLabel(row, text="Peso (Kg):").pack(side="left", padx=5)
-        self.weight_entry = ctk.CTkEntry(row, width=60)
-        self.weight_entry.pack(side="left", padx=5)
+        # Weight (Removed)
+        # ctk.CTkLabel(row, text="Peso (Kg):").pack(side="left", padx=5)
+        # self.weight_entry = ctk.CTkEntry(row, width=60)
+        # self.weight_entry.pack(side="left", padx=5)
         
         # File Path
         self.path_entry = ctk.CTkEntry(row, width=300, placeholder_text="Ruta del archivo CSV...")
@@ -48,8 +48,8 @@ class TopSpeedTest(ctk.CTkFrame):
         ctk.CTkButton(row, text="Buscar", width=60, command=browse).pack(side="left", padx=5)
 
     def refresh_pilots(self):
-        pilots = self.data_manager.load_pilotos()
-        if not pilots: pilots = ["Nuevo Piloto"]
+        pilotos_data = self.data_manager.load_pilotos()
+        pilots = [p.get('nombre') for p in pilotos_data] if pilotos_data else ["Nuevo Piloto"]
         
         current = self.pilot_combo.get()
         self.pilot_combo.configure(values=pilots)
@@ -59,26 +59,28 @@ class TopSpeedTest(ctk.CTkFrame):
             self.pilot_combo.set("Seleccione Piloto...")
 
     def process(self, moto_data, env_conditions, comments):
+        pilotos_data = self.data_manager.load_pilotos()
+        
         # Gather data from UI
         pilot = self.pilot_combo.get()
-        weight_str = self.weight_entry.get()
         filepath = self.path_entry.get()
         
         # Validate
         if pilot == "Seleccione Piloto..." or not pilot:
             return False, "Por favor seleccione un piloto."
-        if not weight_str:
-             return False, "Por favor ingrese el peso del piloto."
-        try:
-             weight = float(weight_str.replace(',', '.'))
-        except ValueError:
-             return False, "Peso del piloto inválido."
+            
+        weight = 0
+        for p_dict in pilotos_data:
+            if p_dict.get('nombre') == pilot:
+                weight = p_dict.get('peso', 0)
+                break
+                
         if not filepath or not os.path.exists(filepath):
              return False, "Por favor seleccione un archivo CSV válido."
              
         inputs = [{
             'pilot': pilot,
-            'weight': weight,
+            'weight': float(weight),
             'filepath': filepath
         }]
         

@@ -201,3 +201,39 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Próximos Pasos
 - Esperar confirmación de Daniel para avanzar en las nuevas rutas de "Comparativo" o "Todas las pruebas", o cualquier otro ajuste menor.
+
+---
+
+## Sesión: 10 de Marzo de 2026 (Refactorización Gestor de Datos)
+
+### 🎯 Objetivo Principal
+- Mover la gestión de datos (Pilotos, Motocicletas, Lugares) al menú principal para un acceso más limpio y centralizado.
+- Almacenar permanentemente el peso asociado a cada piloto.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Agregar peso `0` por defecto a los pilotos antiguos insertados previamente como cadenas de texto para evitar perder su registro.
+- Eliminar el campo de entrada manual de "peso" de cada módulo de prueba individual, consolidando la información de peso directamente según el perfil del piloto.
+
+### 🧠 Decisiones Tomadas
+- Se ha creado una estructura de botones en la parte baja del menú principal en `main.py` ("Gestión de Motos", "Gestión de Lugares", "Gestión de Pilotos").
+- Los módulos de pruebas ahora extraen automáticamente el peso desde el `DataManager` en base al nombre del piloto.
+- Se ha implementado un sistema de migración automática en `data_manager.py` para leer `pilotos.json` al arranque y convertir cualquier nombre antiguo en un diccionario de datos estructurado.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `data_manager.py`
+- `[MODIFICADO]` `main.py`
+- `[MODIFICADO]` `modules/braking_test.py`
+- `[MODIFICADO]` `modules/climbing_test.py`
+- `[MODIFICADO]` `modules/acceleration_0_80.py`
+- `[MODIFICADO]` `modules/recovery_test.py`
+- `[MODIFICADO]` `modules/top_speed_test.py`
+- `[MODIFICADO]` `version.py`
+
+### 🚀 Control de Versiones (v2.2.0)
+- Incremento de versión (minor) por la introducción de los paneles de administración y cambio estructural en los archivos JSON de guardado local.
+
+### 💻 Comandos Ejecutados
+*(Refactorización interna en Python)*
+
+### ⏳ Pendientes
+- Desarrollar la lógica y diseño de las ventanas vacías `Comparativo` y `Todas las pruebas`.
