@@ -22,7 +22,7 @@ class PDFReporter:
     def add_header(self, moto_info, pilots_info, comments, env_conditions=None, title=None, test_type="frenado"):
         # Title
         if title is None:
-            title = f"- Prueba de {test_type} del modelo \"{moto_info.get('Nombre Comercial', '')}\" (\"{moto_info.get('Código Modelo', '')}\") -"
+            title = f"Prueba de {test_type} del modelo \"{moto_info.get('Nombre Comercial', '')}\" (\"{moto_info.get('Código Modelo', '')}\")"
         self.elements.append(Paragraph(title, self.styles['Header1']))
         
         # Moto Info

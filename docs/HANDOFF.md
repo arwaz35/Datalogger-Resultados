@@ -172,3 +172,32 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Próximos Pasos
 - Esperar confirmación de Daniel para avanzar en las nuevas rutas de "Comparativo" o "Todas las pruebas".
+
+---
+
+## Sesión: 10 de Marzo de 2026
+
+### 🎯 Objetivo Principal
+- Eliminar los guiones (`-`) del título principal en los reportes PDF.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Quitar los guiones "-" que envuelven el título de cada informe.
+
+### 🧠 Decisiones Tomadas
+- Se modificó el formato de string predeterminado en `reporter.py` (`PDFReporter.add_header`) quitando los guiones al inicio y al final.
+- El formato final pasa de ser `- Prueba de [tipo] del modelo "[Moto]" ("[Codigo]") -` a ser: `Prueba de [tipo] del modelo "[Moto]" ("[Codigo]")`.
+- Se actualizó la versión de la aplicación a **v2.1.1**.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 💻 Comandos Ejecutados
+*(Sin comandos ejecutados, solo edición de texto en Python)*
+
+### ⏳ Pendientes
+- Desarrollar la lógica y diseño de las ventanas vacías `Comparativo` y `Todas las pruebas` a futuro.
+
+### 🚀 Próximos Pasos
+- Esperar confirmación de Daniel para avanzar en las nuevas rutas de "Comparativo" o "Todas las pruebas", o cualquier otro ajuste menor.
