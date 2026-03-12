@@ -686,3 +686,136 @@ class Plotter:
         return buf
 
 
+
+    @staticmethod
+    def plot_gps_heatmap(event, title="Trace GPS (Mapa de Calor de Velocidad)"):
+        """
+        Generates a Map Heatmap based on Latitude, Longitude, and GPS Speed.
+        Uses staticmap to provide a clean offline/online hybrid mapping solution without external browsers.
+        Returns bytes buffer containing the image.
+        """
+        try:
+            import socket
+            # Quick check for internet connection before trying to download tiles
+            try:
+                # 1.1.1.1 on port 53 is Cloudflare DNS, usually very reliable and fast
+                socket.create_connection(("1.1.1.1", 53), timeout=1)
+            except OSError:
+                print("No internet connection detected, skipping GPS heatmap generation.")
+                return None
+                
+            # We need staticmap for this
+            from staticmap import StaticMap, Line
+            import matplotlib.pyplot as plt
+            import matplotlib.colors as mcolors
+            import numpy as np
+            import pandas as pd
+            import io
+
+            df = event['df']
+            
+            # Use start/end bounds if metrics are present, or use the whole df context
+            if 'metrics' in event and 'start_idx' in event['metrics']:
+                start_idx = event['metrics']['start_idx']
+                end_idx = event['metrics'].get('end_idx', df.index[-1])
+                try:
+                    start_loc = df.index.get_loc(start_idx)
+                    end_loc = df.index.get_loc(end_idx)
+                    run_df = df.iloc[start_loc:end_loc+1].copy()
+                except:
+                    run_df = df.copy()
+            else:
+                run_df = df.copy()
+
+            if run_df.empty:
+                return None
+                
+            # Verify columns exist
+            if 'Latitud' not in run_df.columns or 'Longitud' not in run_df.columns or 'Velocidad_GPS' not in run_df.columns:
+                return None
+
+            # Clean Lat/Lon which might be stored as European formatted strings or floats
+            def clean_coord(val):
+                if isinstance(val, str):
+                    try:
+                        return float(val.replace(',', '.'))
+                    except ValueError:
+                        return None
+                return float(val)
+
+            run_df['Lat'] = run_df['Latitud'].apply(clean_coord)
+            run_df['Lon'] = run_df['Longitud'].apply(clean_coord)
+            
+            # Filter rows with valid coordinates
+            valid_df = run_df.dropna(subset=['Lat', 'Lon'])
+            # Avoid default 0,0 coords if sensor lost signal
+            valid_df = valid_df[(valid_df['Lat'] != 0) & (valid_df['Lon'] != 0)]
+            
+            if len(valid_df) < 2:
+                # Not enough points for a line
+                return None
+                
+            velocities = valid_df['Velocidad_GPS'].values
+            lats = valid_df['Lat'].values
+            lons = valid_df['Lon'].values
+            
+            # Create Map Object (width x height) with Satellite + Roads (Hybrid) tiles
+            # We use Google Maps Hybrid which provides both imagery and street guides
+            url_template = 'http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}'
+            # Padding leaves 50 pixels of "air" around the route so it's beautifully framed
+            m = StaticMap(800, 600, padding_x=50, padding_y=50, url_template=url_template)
+            
+            # --- Auto-Zoom Override ---
+            # staticmap by default caps its auto-zoom at 17, which is too far for short tests (e.g., 70m).
+            # Google supports up to zoom 20 for satellite imagery. We monkey-patch the 
+            # zoom calculation specifically for this map instance to allow zooming up to 20.
+            from staticmap.staticmap import _lon_to_x, _lat_to_y
+            
+            def custom_calculate_zoom():
+                for z in range(20, -1, -1):
+                    extent = m.determine_extent(zoom=z)
+                    width = (_lon_to_x(extent[2], z) - _lon_to_x(extent[0], z)) * m.tile_size
+                    if width > (m.width - m.padding[0] * 2): continue
+                    height = (_lat_to_y(extent[1], z) - _lat_to_y(extent[3], z)) * m.tile_size
+                    if height > (m.height - m.padding[1] * 2): continue
+                    return z
+                return 0
+                
+            m._calculate_zoom = custom_calculate_zoom
+            
+            # Setup ColorMap processing
+            # We map speed to a color range (Blue=Cold=Slow, Red=Hot=Fast)
+            vmin = np.min(velocities)
+            vmax = np.max(velocities)
+            if vmax == vmin: vmax = vmin + 1 # avoid zero division
+            
+            cmap = plt.get_cmap('jet') # Jet produces nice Blue->Green->Yellow->Red
+            norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+
+            # Build line segments point to point
+            for i in range(len(lats) - 1):
+                # segment coords (staticmap expects lon, lat)
+                p1 = [lons[i], lats[i]]
+                p2 = [lons[i+1], lats[i+1]]
+                
+                # Assign color based on average speed of the segment
+                avg_v = (velocities[i] + velocities[i+1]) / 2.0
+                rgba = cmap(norm(avg_v))
+                color_hex = mcolors.to_hex(rgba, keep_alpha=False)
+                
+                line = Line([p1, p2], color_hex, 4)
+                m.add_line(line)
+
+            # Render Map Image
+            image = m.render()
+
+            buf = io.BytesIO()
+            # For some reason staticmap returns a PIL instance directly, we just save it
+            image.save(buf, format='PNG')
+            buf.seek(0)
+            
+            return buf
+            
+        except Exception as e:
+            print(f"Error generating GPS Heatmap: {e}")
+            return None
