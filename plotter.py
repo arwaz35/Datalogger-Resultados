@@ -817,6 +817,9 @@ class Plotter:
             ax.imshow(np.asarray(image))
             ax.axis('off') # Hide Matplotlib axes
             
+            # Make room for the colorbar on the right side
+            plt.subplots_adjust(right=0.85)
+            
             # Title handling
             if title:
                 fig.suptitle(title, fontsize=14, fontweight='bold', y=0.92)
@@ -826,7 +829,9 @@ class Plotter:
             sm.set_array([]) # Required for older matplotlib versions
             
             # Create a tight axes for the colorbar: [left, bottom, width, height]
-            cax = fig.add_axes([0.85, 0.15, 0.03, 0.7]) 
+            # Moved slightly to the left to avoid clipping the numbers
+            # Made it half the height (0.35) and centered vertically (0.325 bottom + 0.35 height / 2) vs old (0.15 bottom + 0.7 height)
+            cax = fig.add_axes([0.88, 0.325, 0.03, 0.35]) 
             cbar = fig.colorbar(sm, cax=cax)
             cbar.set_label('Velocidad (km/h)', rotation=270, labelpad=15, fontweight='bold')
             cbar.ax.tick_params(labelsize=10)
@@ -893,7 +898,7 @@ class Plotter:
             for i in range(len(lats)):
                 points.append([lons[i], lats[i]])
                 
-            line = Line(points, '#1f538d', 5) # Default nice blue, thick
+            line = Line(points, '#1f538d', 10) # Default nice blue, thick
             m.add_line(line)
             
             # Render map
