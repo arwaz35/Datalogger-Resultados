@@ -542,3 +542,39 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Próximos Pasos
 - Estudiar y estructurar el abordaje del archivo "Nuevas funciones" (referentes a Frenado de 163 a 168).
+
+---
+
+## Sesión: 13 de Marzo de 2026 (Hotfix: Ajustes visuales de PDF y Mapas Gráficos)
+
+### 🎯 Objetivo Principal
+- Limpiar el exceso de textos generados en los PDFs paginados, erradicar hojas en blanco y modificar el enfoque visual de la primera página hacia una vista "geográfica plana", conservando los mapas de calor para los eventos específicos.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Quitar "Mapa de Contexto Global" del inicio.
+- Reubicar el link directo a Google Maps bajo el título "Ubicación de la prueba".
+- Reemplazar el mapa de calor inicial por un trazado simple, grueso, de color azul, que indique estáticamente la distancia de la prueba en metros.
+- Solucionar un bug donde el `reporter.py` eyectaba una Hoja 2 vacía por desbordamiento del mapa y tabla inicial unidos.
+- Agrandar sustancialmente el `figsize` de las gráficas resumen para aprovechar más hoja.
+- Limpiar todos los títulos residuales como "Hoja 3: mapa de calor - mejor evento".
+
+### 🧠 Decisiones Tomadas
+- Se limpiaron los "Paragraph" residuales en `reporter.py` inyectados en la Hoja 1, consolidando "Ubicación de la prueba" con su respectivo vínculo HTML anclado semánticamente bajo la tabla de contexto.
+- En `plotter.py` se construyó `plot_gps_route_simple(df)`, una reutilización minimalista de staticmap que en lugar de iterar promedios de calor, traza una ruta fija `#1f538d` a 5px, añadiendo desde Matplotlib el overlay de texto dinámico de `distance_m`.
+- En `plotter.py` se refactorizaron los métodos paramétricos (e.j., `plot_speed_vs_time`, `plot_accel_vs_time`) para soportar sobreescritura del `figsize` (default a 15x6). `analysis_controller` ahora los invoca con `figsize=(15,8)` para gráficos de resumen expandidos.
+- Se reparó la lógica de paginación en `analysis_controller.py / generate_pdf`, forzando condicional e incondicionalmente un `reporter.add_page_break()` antes de imprimir los resúmenes tabulares, asegurando que la data (como "Top 3 de Frenado") respire siempre desde la Hoja 2.
+- Se iteraron manualmente todos los Evaluadores (`evaluate_braking`, `evaluate_acceleration_0_80`, `evaluate_climbing`, etc) para sustituir "Mapa de Calor Global" por la nueva "Línea Azul Simple" e inyectando las depuraciones fonéticas solicitadas sobre los diccionarios `sections`.
+- **Bugfixes menores resueltos sobre la marcha:**
+  - `analyzer.py`: Estandarización de llaves de contexto (`'distancia_m'`, `'altitud_promedio_msnm'`) a *snake_case* en lugar de capitalizadas, homologando el formato que consumían el preview UI y el PDFReporter.
+  - `plotter.py`: Implementación de una vista horizontal estática o banner en el renderizado `StaticMap(800, 400)` y `figsize=(10, 5)`. Se evitó escalar las imágenes por `inch` en ReporterLab para impedir la pérdida de nitidez y ratio, resolviendo desbordamientos por adición de textos largos (comentarios).
+  - Reintegrada dependencia local ausente (`import numpy`, `from reportlab.lib.units import inch`).
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `plotter.py`
+- `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `analyzer.py`
+- `[MODIFICADO]` `preview_window.py`
+
+### 🚀 Control de Versiones (v2.4.1)
+- Bugfixing resolutivo e iteración en diseño UX/UI en exportación estática de ReportLab PDFs y UI Preview.

@@ -20,6 +20,8 @@ class PDFReporter:
         self.styles.add(ParagraphStyle(name='NormalCenter', parent=self.styles['Normal'], alignment=1))
 
     def add_header(self, moto_info, pilots_info, comments, env_conditions=None, title=None, test_type="frenado", contexto_gps=None, context_map=None):
+        from reportlab.lib.units import inch
+        
         # Title
         if title is None:
             title = f"Prueba de {test_type} del modelo {moto_info.get('Nombre Comercial', '')} ({moto_info.get('Código Modelo', '')})"
@@ -97,28 +99,23 @@ class PDFReporter:
             self.elements.append(Paragraph(f"<b>Comentarios:</b> {comments}", self.styles['Normal']))
             
         if contexto_gps and contexto_gps.get('distancia_m'):
-            self.elements.append(Spacer(1, 12))
-            g_data = [
-                ["Distancia Total (ruta):", f"{contexto_gps.get('distancia_m', 0.0):.2f} m", "Altitud Promedio:", f"{contexto_gps.get('altitud_promedio_msnm', 0.0):.1f} msnm"],
-                ["Coordenadas Inicio:", f"{contexto_gps.get('latitud_inicial', 0.0):.6f}, {contexto_gps.get('longitud_inicial', 0.0):.6f}", "Link Maps:", f"<link href=\"{contexto_gps.get('google_maps_link', '')}\" color=\"blue\"><u>Ver en Google Maps</u></link>"]
-            ]
-            t_gps = Table(g_data, colWidths=[col_lbl, col_val, col_lbl, col_val])
-            t_gps.setStyle(TableStyle([
-                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-                ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
-                ('BACKGROUND', (2,0), (2,-1), colors.lightgrey),
-                ('PADDING', (0,0), (-1,-1), 6),
-            ]))
-            self.elements.append(Paragraph("<b>Contexto Geográfico de la Ruta Trazada:</b>", self.styles['Normal']))
-            self.elements.append(Spacer(1, 4))
-            self.elements.append(t_gps)
+            from reportlab.lib.styles import ParagraphStyle
+            style_centered = ParagraphStyle(name='CenteredTitle', parent=self.styles['Normal'], alignment=1, fontSize=16, fontName='Helvetica-Bold', spaceAfter=14)
+            self.elements.append(Paragraph("Ubicación de la prueba", style_centered))
             
-        self.elements.append(Spacer(1, 20))
-        
         if context_map:
             import io
-            self.elements.append(Paragraph("<b>Mapa de Contexto Global:</b>", self.styles['Header2']))
+            from reportlab.lib.units import inch
             self.add_image(io.BytesIO(context_map))
+            
+        if contexto_gps and contexto_gps.get('google_maps_link'):
+            link_maps = contexto_gps.get('google_maps_link')
+            from reportlab.lib.styles import ParagraphStyle
+            style_centered_link = ParagraphStyle(name='CenteredLink', parent=self.styles['Normal'], alignment=1, fontSize=12)
+            self.elements.append(Spacer(1, 4))
+            self.elements.append(Paragraph(f"<link href=\"{link_maps}\" color=\"blue\"><u>Enlace directo a Google Maps</u></link>", style_centered_link))
+        
+        self.elements.append(Spacer(1, 15))
            
     def add_section(self, title):
         self.elements.append(Paragraph(title, self.styles['Header2']))

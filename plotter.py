@@ -6,14 +6,14 @@ import io
 
 class Plotter:
     @staticmethod
-    def plot_speed_vs_time(events, title, filename_prefix="plot_speed"):
+    def plot_speed_vs_time(events, title, filename_prefix="plot_speed", figsize=(15, 6)):
         """
         Generates Type 1 graph: Speed vs Time for multiple events.
         Target: Identify braking start (Red Dotted Line) and stop (Red Dotted Line).
         Returns a list of image bytes or paths.
         For report generation, we often return BytesIO objects.
         """
-        fig, ax = plt.subplots(figsize=(15, 6))
+        fig, ax = plt.subplots(figsize=figsize)
         
         for i, event in enumerate(events):
             # Normalize time to start at 0 for the braking event
@@ -120,7 +120,7 @@ class Plotter:
         return buf
 
     @staticmethod
-    def plot_rpm_vs_time(event, title, benchmarks=None, markers=None):
+    def plot_rpm_vs_time(event, title, benchmarks=None, markers=None, figsize=(15, 3)):
         """
         Generates RPM vs Time graph.
         """
@@ -135,8 +135,8 @@ class Plotter:
         df_reset = df.reset_index(drop=True)
         time_axis = (df_reset.index - start_pos) * 0.1
         
-        # Reducir la altura a 3 para agrupar en una sola hoja PDF
-        fig, ax = plt.subplots(figsize=(15, 3))
+        # Reducir la altura a 3 para agrupar en una sola hoja PDF, o ajustable por kwarg
+        fig, ax = plt.subplots(figsize=figsize)
         
         # Plot RPM
         if 'RPM' in df_reset.columns:
@@ -243,7 +243,7 @@ class Plotter:
         return buf
 
     @staticmethod
-    def plot_accel_vs_time(event, title, benchmarks=None, markers=None):
+    def plot_accel_vs_time(event, title, benchmarks=None, markers=None, figsize=(15, 3)):
         """
         Generates Type 2: Accel vs Time + Avg Accel.
         Optional benchmarks list [0, 20...].
@@ -258,6 +258,9 @@ class Plotter:
              start_pos = 0
              
         df_reset = df.reset_index(drop=True)
+        time_axis = (df_reset.index - start_pos) * 0.1
+        
+        fig, ax = plt.subplots(figsize=figsize)
         # Use raw values (keep negative if negative)
         df_reset['Accel_X_Plot'] = df_reset['Accel_X_ms2']
         
@@ -838,4 +841,85 @@ class Plotter:
             
         except Exception as e:
             print(f"Error generating GPS Heatmap: {e}")
+            return None
+
+    @staticmethod
+    def plot_gps_route_simple(df, title=None, distance_m=0.0):
+        try:
+            from staticmap import StaticMap, Line
+            import matplotlib.pyplot as plt
+            import matplotlib.colors as mcolors
+            import numpy as np
+            import io
+            run_df = df.copy()
+            def clean_coord(val):
+                if isinstance(val, str):
+                    try:
+                        return float(val.replace(',', '.'))
+                    except ValueError:
+                        return None
+                return float(val)
+
+            run_df['Lat'] = run_df['Latitud'].apply(clean_coord)
+            run_df['Lon'] = run_df['Longitud'].apply(clean_coord)
+            
+            valid_df = run_df.dropna(subset=['Lat', 'Lon'])
+            valid_df = valid_df[(valid_df['Lat'] != 0) & (valid_df['Lon'] != 0)]
+            
+            if len(valid_df) < 2:
+                return None
+                
+            lats = valid_df['Lat'].values
+            lons = valid_df['Lon'].values
+            
+            url_template = 'http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}'
+            m = StaticMap(800, 400, padding_x=50, padding_y=50, url_template=url_template)
+            
+            from staticmap.staticmap import _lon_to_x, _lat_to_y
+            def custom_calculate_zoom():
+                for z in range(20, -1, -1):
+                    extent = m.determine_extent(zoom=z)
+                    width = (_lon_to_x(extent[2], z) - _lon_to_x(extent[0], z)) * m.tile_size
+                    if width > (m.width - m.padding[0] * 2): continue
+                    height = (_lat_to_y(extent[1], z) - _lat_to_y(extent[3], z)) * m.tile_size
+                    if height > (m.height - m.padding[1] * 2): continue
+                    return z
+                return 0
+                
+            m._calculate_zoom = custom_calculate_zoom
+            
+            # Simple thick blue line without heat
+            points = []
+            for i in range(len(lats)):
+                points.append([lons[i], lats[i]])
+                
+            line = Line(points, '#1f538d', 5) # Default nice blue, thick
+            m.add_line(line)
+            
+            # Render map
+            image = m.render()
+
+            # Matplotlib wrapper to add title, text, and keep SVG proportions
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.imshow(np.asarray(image))
+            ax.axis('off')
+            
+            if title:
+                fig.suptitle(title, fontsize=14, fontweight='bold', y=0.92)
+            
+            # Overlay distance text
+            if distance_m > 0:
+                ax.text(0.05, 0.05, f"Distancia de la prueba: {distance_m:.2f} m", 
+                        transform=ax.transAxes, fontsize=14, fontweight='bold',
+                        color='white', bbox=dict(facecolor='#1f538d', alpha=0.9, boxstyle='round,pad=0.5'))
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+            plt.close(fig)
+            buf.seek(0)
+            
+            return buf
+            
+        except Exception as e:
+            print(f"Error generating simple GPS route: {e}")
             return None

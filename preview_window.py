@@ -48,24 +48,18 @@ class PreviewWindow(ctk.CTkToplevel):
     def _build_sections(self):
         # Render Geographic Context first if available
         if self.contexto_gps or self.context_map:
-            ctk.CTkLabel(self.scroll_frame, text="Contexto Geográfico Global", font=("Arial", 16, "bold"), text_color="#1f538d").pack(pady=(20, 10), anchor="w", padx=10)
-            
-            if self.contexto_gps and self.contexto_gps.get('distancia_m'):
-                gps_text = (f"Distancia Total: {self.contexto_gps.get('distancia_m', 0.0):.2f} m | "
-                            f"Altitud Promedio: {self.contexto_gps.get('altitud_promedio_msnm', 0.0):.1f} msnm | "
-                            f"Coordenadas Iniciales: {self.contexto_gps.get('latitud_inicial', 0.0):.6f}, {self.contexto_gps.get('longitud_inicial', 0.0):.6f}")
-                ctk.CTkLabel(self.scroll_frame, text=gps_text, font=("Arial", 13)).pack(pady=5, anchor="w", padx=20)
-                
-                link = self.contexto_gps.get('google_maps_link')
-                if link:
-                    import webbrowser
-                    def open_map():
-                        webbrowser.open(link)
-                    btn_map = ctk.CTkButton(self.scroll_frame, text="Ver en Google Maps", fg_color="#4285F4", hover_color="#3367D6", command=open_map)
-                    btn_map.pack(pady=10, anchor="w", padx=20)
+            ctk.CTkLabel(self.scroll_frame, text="Ubicación de la prueba", font=("Arial", 20, "bold"), text_color="#1f538d").pack(pady=(20, 10), anchor="center")
             
             if self.context_map:
                 self._add_image(self.context_map)
+                
+            if self.contexto_gps and self.contexto_gps.get('google_maps_link'):
+                link = self.contexto_gps.get('google_maps_link')
+                import webbrowser
+                def open_map(url=link):
+                    webbrowser.open(url)
+                btn_map = ctk.CTkButton(self.scroll_frame, text="Ver en Google Maps", fg_color="#4285F4", hover_color="#3367D6", command=open_map)
+                btn_map.pack(pady=(10, 20), anchor="center")
                 
             # Separator
             ctk.CTkFrame(self.scroll_frame, height=2, fg_color="gray").pack(fill="x", padx=20, pady=20)

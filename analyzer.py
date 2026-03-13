@@ -885,11 +885,11 @@ def get_gps_context(df):
     Calcula distancia total, altitud promedio y genera link a Maps.
     """
     context = {
-        'Distancia (m)': 0.0,
-        'Altitud (msnm)': 0.0,
-        'Latitud': '',
-        'Longitud': '',
-        'Mapa Link': ''
+        'distancia_m': 0.0,
+        'altitud_promedio_msnm': 0.0,
+        'latitud_inicial': 0.0,
+        'longitud_inicial': 0.0,
+        'google_maps_link': ''
     }
     
     if df.empty:
@@ -906,16 +906,16 @@ def get_gps_context(df):
         if 'Altitud' in df.columns:
             alt_clean = df['Altitud'].apply(clean_coord).dropna()
             if not alt_clean.empty:
-                context['Altitud (msnm)'] = round(alt_clean.mean(), 1)
+                context['altitud_promedio_msnm'] = round(alt_clean.mean(), 1)
                 
         if 'Distancia_m' in df.columns:
             dist = df['Distancia_m'].max() - df['Distancia_m'].min()
-            context['Distancia (m)'] = round(abs(dist), 1)
+            context['distancia_m'] = round(abs(dist), 1)
         elif 'Velocidad_GPS' in df.columns:
             vel_ms = df['Velocidad_GPS'] / 3.6
             dt = 0.1
             dist = (vel_ms * dt).sum()
-            context['Distancia (m)'] = round(dist, 1)
+            context['distancia_m'] = round(dist, 1)
             
         if 'Latitud' in df.columns and 'Longitud' in df.columns:
             temp_df = df.copy()
@@ -928,9 +928,9 @@ def get_gps_context(df):
                 start_lat = valid['Lat_c'].iloc[0]
                 start_lon = valid['Lon_c'].iloc[0]
                 
-                context['Latitud'] = round(start_lat, 6)
-                context['Longitud'] = round(start_lon, 6)
-                context['Mapa Link'] = f"https://www.google.com/maps?q={start_lat},{start_lon}"
+                context['latitud_inicial'] = round(start_lat, 6)
+                context['longitud_inicial'] = round(start_lon, 6)
+                context['google_maps_link'] = f"https://www.google.com/maps?q={start_lat},{start_lon}"
                 
     except Exception as e:
         print(f"Error parseando contexto geográfico: {e}")
