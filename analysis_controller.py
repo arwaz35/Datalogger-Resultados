@@ -332,10 +332,14 @@ class AnalysisController:
                 
             reporter.add_section(sec['title'])
             
-            for img_bytes in sec.get('images', []):
+            for img_item in sec.get('images', []):
                 # Import io locally for reading bytes
                 import io
-                reporter.add_image(io.BytesIO(img_bytes))
+                # Check if img_item is a dict or raw bytes
+                if isinstance(img_item, dict):
+                    reporter.add_image(io.BytesIO(img_item['bytes']), space_after=img_item.get('space_after', 12))
+                else:
+                    reporter.add_image(io.BytesIO(img_item))
                 
             if sec.get('table_data'):
                 # Pop the header if present to pass separately or pass together
@@ -431,7 +435,7 @@ class AnalysisController:
             
         sections.append({
             "title": "Aceleración 0-80 km/h - Resumen 3 Mejores",
-            "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
+            "images": [{'bytes': img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf}],
             "table_data": table_data_summary
         })
         
@@ -440,7 +444,7 @@ class AnalysisController:
         if img_detail_gps:
             sections.append({
                 "title": f"Ubicación de la prueba ({best_event['pilot']})",
-                "images": [img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps],
+                "images": [{'bytes': img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps}],
                 "table_data": None
             })
             
@@ -491,16 +495,14 @@ class AnalysisController:
                 f"{v1}-{v2}", f"{t_seg:.2f}", f"{d_seg:.2f}", f"{a_seg:.2f}", f"{int(rpm_seg)}"
             ])
             
-        final_images = []
-        final_images.extend([
-            img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
-            img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm,
-            img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a
-        ])
+        images_detalle = []
+        images_detalle.append({'bytes': img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v})
+        images_detalle.append({'bytes': img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm, 'space_after': 25})
+        images_detalle.append({'bytes': img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a, 'space_after': 30})
         
         sections.append({
             "title": f"Hoja 4: Gráficas Mejor Evento - Evento {best_event['id']} ({best_event['pilot']})",
-            "images": final_images,
+            "images": images_detalle,
             "table_data": table_segments
         })
         
@@ -621,7 +623,7 @@ class AnalysisController:
             
         sections.append({
             "title": "Ascenso 0-70m - Resumen Mejores Eventos",
-            "images": [img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1],
+            "images": [{'bytes': img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1}],
             "table_data": table_data_combined
         })
         
@@ -633,7 +635,7 @@ class AnalysisController:
             if img_gps:
                 sections.append({
                     "title": f"Ubicación de la prueba (Solo: {bs['pilot']})",
-                    "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
+                    "images": [{'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps}],
                     "table_data": None
                 })
                 
@@ -648,16 +650,14 @@ class AnalysisController:
                 [f"{m.get('v_start', 0.0):.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}", "70.00", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"]
             ]
             
-            ims = []
-            ims.extend([
-                img_bs1.getvalue() if hasattr(img_bs1, 'getvalue') else img_bs1,
-                img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm,
-                img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc
-            ])
+            images_detalle = []
+            images_detalle.append({'bytes': img_bs1.getvalue() if hasattr(img_bs1, 'getvalue') else img_bs1})
+            images_detalle.append({'bytes': img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm, 'space_after': 25})
+            images_detalle.append({'bytes': img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc, 'space_after': 30})
                 
             sections.append({
                 "title": f"Gráficas Mejor Evento Solo ({bs['pilot']})",
-                "images": ims,
+                "images": images_detalle,
                 "table_data": t2
             })
 
@@ -669,7 +669,7 @@ class AnalysisController:
             if img_gps_p:
                 sections.append({
                     "title": f"Mapa de Calor - Mejor Evento Pasajero ({bp['pilot']})",
-                    "images": [img_gps_p.getvalue() if hasattr(img_gps_p, 'getvalue') else img_gps_p],
+                    "images": [{'bytes': img_gps_p.getvalue() if hasattr(img_gps_p, 'getvalue') else img_gps_p}],
                     "table_data": None
                 })
                 
@@ -684,16 +684,14 @@ class AnalysisController:
                 [f"{m.get('v_start', 0.0):.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}", "70.00", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"]
             ]
             
-            ims_p = []
-            ims_p.extend([
-                img_bp1.getvalue() if hasattr(img_bp1, 'getvalue') else img_bp1,
-                img_rpm_p.getvalue() if hasattr(img_rpm_p, 'getvalue') else img_rpm_p,
-                img_acc_p.getvalue() if hasattr(img_acc_p, 'getvalue') else img_acc_p
-            ])
+            images_detalle = []
+            images_detalle.append({'bytes': img_bp1.getvalue() if hasattr(img_bp1, 'getvalue') else img_bp1})
+            images_detalle.append({'bytes': img_rpm_p.getvalue() if hasattr(img_rpm_p, 'getvalue') else img_rpm_p, 'space_after': 25})
+            images_detalle.append({'bytes': img_acc_p.getvalue() if hasattr(img_acc_p, 'getvalue') else img_acc_p, 'space_after': 30})
                 
             sections.append({
                 "title": f"Gráficas Mejor Evento Pasajero ({bp['pilot']})",
-                "images": ims_p,
+                "images": images_detalle,
                 "table_data": t3
             })
             
@@ -828,7 +826,7 @@ class AnalysisController:
                 
             sections.append({
                 "title": "Recuperación - Resumen Mejores Eventos",
-                "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
+                "images": [{'bytes': img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf}],
                 "table_data": table_data
             })
             
@@ -845,7 +843,7 @@ class AnalysisController:
                 if img_gps:
                     sections.append({
                         "title": f"Mapa de Calor - Inicio ~{g} km/h ({pilot})",
-                        "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
+                        "images": [{'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps}],
                         "table_data": None
                     })
                 
@@ -869,15 +867,15 @@ class AnalysisController:
                     ]
                 ]
                 
-                images = []
-                images.append(img1.getvalue() if hasattr(img1, 'getvalue') else img1)
+                images_detalle = []
+                images_detalle.append({'bytes': img1.getvalue() if hasattr(img1, 'getvalue') else img1})
                 if img_rpm:
-                    images.append(img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm)
-                images.append(img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc)
+                    images_detalle.append({'bytes': img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm, 'space_after': 25})
+                images_detalle.append({'bytes': img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc, 'space_after': 30})
                 
                 sections.append({
                     "title": f"Gráficas Detalle: Inicio ~{g} km/h ({pilot})",
-                    "images": images,
+                    "images": images_detalle,
                     "table_data": stats
                 })
 
@@ -983,7 +981,7 @@ class AnalysisController:
             # Hoja 2: Resumen V Max
             sections.append({
                 "title": f"Velocidad Máxima - Métrica Principal ({pilot})",
-                "images": [img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v],
+                "images": [{'bytes': img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v}],
                 "table_data": stats_extra
             })
             

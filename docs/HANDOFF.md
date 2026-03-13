@@ -578,3 +578,65 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Control de Versiones (v2.4.1)
 - Bugfixing resolutivo e iteración en diseño UX/UI en exportación estática de ReportLab PDFs y UI Preview.
+
+---
+
+## Sesión: 13 de Marzo de 2026 (Fixes: Aceleración y Leyenda de Calor)
+
+### 🎯 Objetivo Principal
+- Corregir el error de tipado al previsualizar la prueba de Aceleración 0-80 km/h que causaba el quiebre de la aplicación.
+- Mejorar el aspecto visual en la leyenda gráfica del mapa de calor satelital, reduciendo su escala y centrándola correctamente en pantalla para evitar traslapes.
+- Identificar y engrosar la línea azul representativa del trayecto global de la prueba en los mapas satelitales fijos. 
+
+### 👤 Peticiones del Usuario (Daniel)
+- Solicitar la solución del error en Aceleración (`TypeError: Plotter.plot_acceleration_comparison() got an unexpected keyword argument 'figsize'`).
+- Señalar que los números de la "barra de colores" o leyenda en el mapa de calor se montaban y cortaban sobre la propia imagen. Se requirió bajar el tamaño al 50% y centrar verticalmente, conservando la ubicación horizontal.
+- Cambiar el grosor de la línea azul gruesa que indica el trazado en la vista global.
+
+### 🧠 Decisiones Tomadas
+- En `plotter.py` > `plot_acceleration_comparison`, se introdujo formalmente el parámetro por defecto `figsize=(15, 6)` que fue omitido durante la actualización v2.4.1 de expansión cartográfica, subsanando el crash inmediato de compatibilidad con `analysis_controller.py`.
+- En `plotter.py` > `plot_gps_heatmap`, se manipuló el objeto Matplotlib ajustando el marco del lienzo principal con `plt.subplots_adjust(right=0.85)` para darle aire al mapa, e inyectando un nuevo `fig.add_axes([0.88, 0.325, 0.03, 0.35])` al `Colorbar` (reduciéndolo de `0.7` de altura a `0.35`, y subiendo el eje inferior `y` desde `0.15` a `0.325` para un anclaje centrado y elegante).
+- En `plotter.py` > `plot_gps_route_simple`, el trazo (`Line`) sobre las coordenadas fue actualizado incrementando el grosor azul de `5` a `10` puntos de peso, haciendo la ruta de la Hoja 1 mucho más evidente en impresiones con resolución elevada.
+- Incremento a **v2.4.3** reflejando estas correcciones rápidas.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `plotter.py`
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 🚀 Control de Versiones (v2.4.3)
+- Hotfixes (Solución rápida de crash estético y de ejecución de UI).
+
+### ⏳ Pendientes
+- Estructuración e inicialización del modo "Todas las pruebas".
+
+### 🚀 Próximos Pasos
+- Construir la maqueta visual e integración inicial en `main.py` de la interfaz Combinada (Selección masiva de pilotos y archivos de cada etapa).
+
+---
+
+## Sesión: 13 de Marzo de 2026 (Refinamiento Estético de Reportes)
+
+### 🎯 Objetivo Principal
+- Corregir el truncamiento de etiquetas de ejes en las gráficas exportadas.
+- Ajustar el espaciado vertical entre elementos en las hojas de detalle del PDF.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Notificar que la palabra "Tiempo (s)" se estaba cortando en el borde inferior de las gráficas.
+- Solicitar más aire/espacio entre las gráficas de RPM, Aceleración y la tabla resumen final.
+
+### 🧠 Decisiones Tomadas
+- En `plotter.py`, se implementó el uso sistemático de `bbox_inches='tight'` en todos los métodos de guardado de imágenes (`plt.savefig`). Esto garantiza que Matplotlib calcule el área de guardado incluyendo dinámicamente todos los elementos externos como títulos y etiquetas de ejes, evitando recortes.
+- En `reporter.py`, se parametrizó el método `add_image` y `add_table` con un argumento `space_after=12` por defecto, permitiendo flexibilidad en el diseño del layout.
+- En `analysis_controller.py`, se ajustaron los flujos de creación de PDF para inyectar espacios personalizados (`25pt` tras RPM y `30pt` tras Aceleración), logrando una distribución visual más equilibrada y profesional en las hojas de resultados.
+- Incremento a **v2.4.4** para marcar este hito de pulido visual.
+
+### �� Archivos Modificados / Creados
+- `[MODIFICADO]` `plotter.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 🚀 Control de Versiones (v2.4.4)
+- Mejoras de renderizado y maquetación PDF.

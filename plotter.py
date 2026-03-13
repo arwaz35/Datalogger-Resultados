@@ -114,7 +114,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -237,7 +237,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png') # removed dpi=200 to match others
+        plt.savefig(buf, format='png', bbox_inches='tight') # removed dpi=200 to match others
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -339,7 +339,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -353,7 +353,7 @@ class Plotter:
         
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=200)
+        plt.savefig(buf, format='png', bbox_inches='tight', dpi=200)
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -413,7 +413,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -509,7 +509,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -621,7 +621,7 @@ class Plotter:
         fig.suptitle(title, fontsize=16)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -683,7 +683,7 @@ class Plotter:
         ax.grid(True, linestyle=':', alpha=0.6)
         
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close(fig)
         return buf

@@ -120,7 +120,7 @@ class PDFReporter:
     def add_section(self, title):
         self.elements.append(Paragraph(title, self.styles['Header2']))
 
-    def add_image(self, img_bytes, width=7.9*inch, height=None):
+    def add_image(self, img_bytes, width=7.9*inch, height=None, space_after=12):
         from reportlab.lib.utils import ImageReader
         
         if img_bytes:
@@ -137,9 +137,9 @@ class PDFReporter:
                 
             im = Image(img_bytes, width=width, height=calc_height)
             self.elements.append(im)
-            self.elements.append(Spacer(1, 12))
+            self.elements.append(Spacer(1, space_after))
 
-    def add_table(self, data, header=None):
+    def add_table(self, data, header=None, space_after=12):
         if header:
             data.insert(0, header)
             
@@ -153,7 +153,7 @@ class PDFReporter:
             ('GRID', (0,0), (-1,-1), 1, colors.black),
         ]))
         self.elements.append(t)
-        self.elements.append(Spacer(1, 12))
+        self.elements.append(Spacer(1, space_after))
 
     def add_page_break(self):
         self.elements.append(PageBreak())
