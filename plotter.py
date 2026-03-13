@@ -359,11 +359,11 @@ class Plotter:
         return buf
 
     @staticmethod
-    def plot_acceleration_comparison(events, title):
+    def plot_acceleration_comparison(events, title, figsize=(15, 6)):
         """
         Combined Speed vs Time for Acceleration events.
         """
-        fig, ax = plt.subplots(figsize=(15, 6))
+        fig, ax = plt.subplots(figsize=figsize)
         
         for i, event in enumerate(events):
             df = event['df']
