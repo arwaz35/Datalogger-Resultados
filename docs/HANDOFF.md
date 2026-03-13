@@ -466,4 +466,79 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - `pip install staticmap`
 
 ### ⏳ Pendientes
+- Iniciar el diseño y desarrollo del modo "Todas las pruebas".
+
+---
+
+## Sesión: 12 de Marzo de 2026
+
+### 🎯 Objetivo Principal
+- Sincronizar las dependencias del proyecto y actualizar el archivo `requirements.txt`.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Revisar qué librerías son necesarias para correr todo el proyecto y cuáles están instaladas.
+- Actualizar el archivo `requirements.txt` si falta alguna.
+
+### 🧠 Decisiones Tomadas
+- Se identificó que `staticmap` (necesaria para la v2.3.0) no estaba en los requisitos originales ni instalada en el entorno.
+- Se instaló `staticmap` y `pillow` manualmente.
+- Se actualizó `requirements.txt` para incluir la lista completa de librerías mandatorias.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `requirements.txt`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 💻 Comandos Ejecutados
+- `pip install staticmap pillow`
+
+### 🚀 Control de Versiones (v2.3.1)
+- Versión de parche para asegurar la integridad de la instalación.
+
+### ⏳ Pendientes
 - Retomar la planificación arquitectónica e inicializar el desarrollo del módulo "Todas las pruebas".
+
+### 🚀 Próximos Pasos
+- Iniciar el diseño y desarrollo del modo "Todas las pruebas".
+
+---
+
+## Sesión: 13 de Marzo de 2026 (Reestructuración de Reportes y Contexto GPS)
+
+### 🎯 Objetivo Principal
+- Implementar una descripción geográfica detallada (Contexto) de cada prueba (distancia, altitud, coordenadas, link original de Google Maps).
+- Reestructurar de cero los reportes PDF para estandarizarlos a: 
+  - Hoja 1 (Contexto Geográfico). 
+  - Hoja 2 (Resumen numérico).
+  - Hoja 3 (Mapa del Mejor Evento 1). 
+  - Hoja 4 (Gráficas del Mejor Evento 1), etc.
+- Agregar Barra de Colores (Colorbar) explicativa al trazado de la ruta.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Agregar texto con "largo de la pista, altitud, latitud y longitud, y link directo a google maps" deduciéndolo de las columnas CSV.
+- A los mapas de línea de calor ponerles una leyenda descriptiva de color-velocidad.
+- Obligar un orden "Hoja 1", "Hoja 2", "Hoja N" muy estricto excluyendo o juntando gráficas y resúmenes.
+
+### 🧠 Decisiones Tomadas
+- Se introdujo `analyzer.get_gps_context(df)` para iterar todo un trazado global y devolver un diccionario rico en los datos del entorno.
+- En `plotter.plot_gps_heatmap` se renderizó de forma manual usando Matplotlib una leyenda y barra lateral ligada al Colormap (`jet`) basándose en los extremos de velocidad para ayudar al lector a entender la escala métrica de velocidad en pista.
+- En `analysis_controller.py`, se partió la lógica de inyección combinada antigua de Previsualización (`preview_data['sections']`). Se aisló `contexto_gps` y `context_map`. A continuación, se separaron con recuadros exactos precalculables cada sección como una nueva hoja.
+- El PDFReporter fue adaptado en su cabecera para pintar la "Tabla de Referencias Satelitales" e imagen SVG. Cada paso final del bucle `sections` ejecuta ahora implícitamente `reporter.add_page_break()`, asegurando total pureza de una hoja, un contenido.
+- Todas y cada una de las sub-clases (`modules/braking_test.py`, `acceleration_0_80.py`, etc) fueron actualizadas para entregar los dicts del render geográfico nativamente al UI.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `analyzer.py`
+- `[MODIFICADO]` `plotter.py`
+- `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `preview_window.py`
+- `[MODIFICADO]` `modules/*.py` (x5)
+- `[MODIFICADO]` `version.py`
+
+### 🚀 Control de Versiones (v2.4.0)
+- Salto en subversión confirmando la total reescritura arquitectónica del controlador de PDFs, Mapas Geotags y Contexto inteligente.
+
+### ⏳ Pendientes
+- Revisar requerimientos de la prueba de frenado planteados en "nuevas funciones".
+
+### 🚀 Próximos Pasos
+- Estudiar y estructurar el abordaje del archivo "Nuevas funciones" (referentes a Frenado de 163 a 168).

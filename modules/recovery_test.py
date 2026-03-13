@@ -96,7 +96,7 @@ class RecoveryTest(ctk.CTkFrame):
                     else:
                         messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
                         
-                PreviewWindow(self, "Previsualización - Recuperación", result['sections'], on_confirm)
+                PreviewWindow(self, "Previsualización - Recuperación", result['sections'], on_confirm, contexto_gps=result.get('contexto_gps'), context_map=result.get('context_map'))
                 return True, "Previsualización abierta"
             else:
                 messagebox.showerror("Error", f"Error en el análisis:\n{result}")

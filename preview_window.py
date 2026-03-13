@@ -3,7 +3,7 @@ from PIL import Image
 import io
 
 class PreviewWindow(ctk.CTkToplevel):
-    def __init__(self, parent, title_text, sections, on_confirm_callback):
+    def __init__(self, parent, title_text, sections, on_confirm_callback, contexto_gps=None, context_map=None):
         """
         sections is a list of dicts:
         [
@@ -23,6 +23,8 @@ class PreviewWindow(ctk.CTkToplevel):
 
         self.on_confirm_callback = on_confirm_callback
         self.sections_data = sections
+        self.contexto_gps = contexto_gps
+        self.context_map = context_map
         
         # Header
         self.header_frame = ctk.CTkFrame(self)
@@ -44,6 +46,30 @@ class PreviewWindow(ctk.CTkToplevel):
         ctk.CTkButton(self.footer_frame, text="Generar Reporte PDF", fg_color="green", hover_color="darkgreen", command=self._confirm).pack(side="right", padx=20)
 
     def _build_sections(self):
+        # Render Geographic Context first if available
+        if self.contexto_gps or self.context_map:
+            ctk.CTkLabel(self.scroll_frame, text="Contexto Geográfico Global", font=("Arial", 16, "bold"), text_color="#1f538d").pack(pady=(20, 10), anchor="w", padx=10)
+            
+            if self.contexto_gps and self.contexto_gps.get('distancia_m'):
+                gps_text = (f"Distancia Total: {self.contexto_gps.get('distancia_m', 0.0):.2f} m | "
+                            f"Altitud Promedio: {self.contexto_gps.get('altitud_promedio_msnm', 0.0):.1f} msnm | "
+                            f"Coordenadas Iniciales: {self.contexto_gps.get('latitud_inicial', 0.0):.6f}, {self.contexto_gps.get('longitud_inicial', 0.0):.6f}")
+                ctk.CTkLabel(self.scroll_frame, text=gps_text, font=("Arial", 13)).pack(pady=5, anchor="w", padx=20)
+                
+                link = self.contexto_gps.get('google_maps_link')
+                if link:
+                    import webbrowser
+                    def open_map():
+                        webbrowser.open(link)
+                    btn_map = ctk.CTkButton(self.scroll_frame, text="Ver en Google Maps", fg_color="#4285F4", hover_color="#3367D6", command=open_map)
+                    btn_map.pack(pady=10, anchor="w", padx=20)
+            
+            if self.context_map:
+                self._add_image(self.context_map)
+                
+            # Separator
+            ctk.CTkFrame(self.scroll_frame, height=2, fg_color="gray").pack(fill="x", padx=20, pady=20)
+            
         for sec in self.sections_data:
             # Section Title
             if sec.get('title'):

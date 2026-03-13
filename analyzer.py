@@ -879,5 +879,64 @@ def calculate_recovery_metrics(event_df):
         print(f"Error recovery metrics: {e}")
         return None
 
+def get_gps_context(df):
+    """
+    Extrae contexto geográfico global de un DataFrame.
+    Calcula distancia total, altitud promedio y genera link a Maps.
+    """
+    context = {
+        'Distancia (m)': 0.0,
+        'Altitud (msnm)': 0.0,
+        'Latitud': '',
+        'Longitud': '',
+        'Mapa Link': ''
+    }
+    
+    if df.empty:
+        return context
+        
+    def clean_coord(val):
+        if pd.isna(val): return None
+        if isinstance(val, str):
+            try: return float(val.replace(',', '.'))
+            except: return None
+        return float(val)
+        
+    try:
+        if 'Altitud' in df.columns:
+            alt_clean = df['Altitud'].apply(clean_coord).dropna()
+            if not alt_clean.empty:
+                context['Altitud (msnm)'] = round(alt_clean.mean(), 1)
+                
+        if 'Distancia_m' in df.columns:
+            dist = df['Distancia_m'].max() - df['Distancia_m'].min()
+            context['Distancia (m)'] = round(abs(dist), 1)
+        elif 'Velocidad_GPS' in df.columns:
+            vel_ms = df['Velocidad_GPS'] / 3.6
+            dt = 0.1
+            dist = (vel_ms * dt).sum()
+            context['Distancia (m)'] = round(dist, 1)
+            
+        if 'Latitud' in df.columns and 'Longitud' in df.columns:
+            temp_df = df.copy()
+            temp_df['Lat_c'] = temp_df['Latitud'].apply(clean_coord)
+            temp_df['Lon_c'] = temp_df['Longitud'].apply(clean_coord)
+            valid = temp_df.dropna(subset=['Lat_c', 'Lon_c'])
+            valid = valid[(valid['Lat_c'] != 0) & (valid['Lon_c'] != 0)]
+            
+            if not valid.empty:
+                start_lat = valid['Lat_c'].iloc[0]
+                start_lon = valid['Lon_c'].iloc[0]
+                
+                context['Latitud'] = round(start_lat, 6)
+                context['Longitud'] = round(start_lon, 6)
+                context['Mapa Link'] = f"https://www.google.com/maps?q={start_lat},{start_lon}"
+                
+    except Exception as e:
+        print(f"Error parseando contexto geográfico: {e}")
+        
+    return context
+
+
 if __name__ == "__main__":
     main_test()

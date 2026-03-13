@@ -806,12 +806,32 @@ class Plotter:
                 line = Line([p1, p2], color_hex, 4)
                 m.add_line(line)
 
-            # Render Map Image
+            # Render Map Image (PIL)
             image = m.render()
 
+            # Now, instead of returning raw PIL, let's wrap it in Matplotlib to add the Colorbar overlay
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.imshow(np.asarray(image))
+            ax.axis('off') # Hide Matplotlib axes
+            
+            # Title handling
+            if title:
+                fig.suptitle(title, fontsize=14, fontweight='bold', y=0.92)
+            
+            # Add Colorbar matched to the norm/cmap
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([]) # Required for older matplotlib versions
+            
+            # Create a tight axes for the colorbar: [left, bottom, width, height]
+            cax = fig.add_axes([0.85, 0.15, 0.03, 0.7]) 
+            cbar = fig.colorbar(sm, cax=cax)
+            cbar.set_label('Velocidad (km/h)', rotation=270, labelpad=15, fontweight='bold')
+            cbar.ax.tick_params(labelsize=10)
+            
+            # Draw and save to buffer
             buf = io.BytesIO()
-            # For some reason staticmap returns a PIL instance directly, we just save it
-            image.save(buf, format='PNG')
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+            plt.close(fig)
             buf.seek(0)
             
             return buf

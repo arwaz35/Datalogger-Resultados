@@ -103,7 +103,7 @@ class TopSpeedTest(ctk.CTkFrame):
             # Launch async to not block UI thread
             import threading
             def show_gui():
-                PreviewWindow(self.winfo_toplevel(), "Reporte de Velocidad Máxima", preview_data['sections'], on_generate)
+                PreviewWindow(self.winfo_toplevel(), "Reporte de Velocidad Máxima", preview_data['sections'], on_generate, contexto_gps=preview_data.get('contexto_gps'), context_map=preview_data.get('context_map'))
             
             self.after(0, show_gui)
             return True, "Previsualización"

@@ -170,16 +170,29 @@ class AnalysisController:
                     }
                     ranking_entries.append(entry)
                     
+        # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
+        from analyzer import get_gps_context
+        contexto_gps = {}
+        img_buf_gps_main = None
+        
+        combined_top_events = []
+        for g in [40, 60]:
+            if best_events_per_group[g]:
+                combined_top_events.extend(best_events_per_group[g])
+                
+        if combined_top_events:
+            abs_best = sorted(combined_top_events, key=lambda x: x['metrics']['dist_m'])[0]
+            contexto_gps = get_gps_context(abs_best['df'])
+            img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Mapa de Contexto (Ubicación de Prueba)")
+            
         # --- PREVIEW SECTIONS PREPARATION ---
         sections = []
         
-        # --- HOJA 1: Resumen Combinado ---
-        combined_top_events = []
+        # --- HOJA 2: Resumen Combinado ---
         table_data_combined = [['Evento', 'Grupo', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
         
         for g in [40, 60]:
             if best_events_per_group[g]:
-                combined_top_events.extend(best_events_per_group[g])
                 for i, ev in enumerate(best_events_per_group[g]):
                     m = ev['metrics']
                     row = [
@@ -194,35 +207,35 @@ class AnalysisController:
                     ]
                     table_data_combined.append(row)
                     
-        # Add Hoja 1
-        img_buf_combined = Plotter.plot_speed_vs_time(combined_top_events, "Comparativa Velocidad vs Tiempo (Todos los mejores)")
-        
-        images_hoja1 = []
         if combined_top_events:
-            abs_best = sorted(combined_top_events, key=lambda x: x['metrics']['dist_m'])[0]
-            img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Ruta GPS (Mejor Desempeño General)")
-            if img_buf_gps_main:
-                images_hoja1.append(img_buf_gps_main.getvalue() if hasattr(img_buf_gps_main, 'getvalue') else img_buf_gps_main)
+            img_buf_combined = Plotter.plot_speed_vs_time(combined_top_events, "Comparativa Velocidad vs Tiempo (Todos los mejores)")
+            
+            sections.append({
+                "title": "Resumen de Frenado - (Top 3 de 40 km/h y 60 km/h)",
+                "images": [img_buf_combined.getvalue() if hasattr(img_buf_combined, 'getvalue') else img_buf_combined],
+                "table_data": table_data_combined
+            })
         
-        images_hoja1.append(img_buf_combined.getvalue() if hasattr(img_buf_combined, 'getvalue') else img_buf_combined)
-        
-        sections.append({
-            "title": "Resumen de Frenado - (Top 3 de 40 km/h y 60 km/h)",
-            "images": images_hoja1,
-            "table_data": table_data_combined
-        })
-        
-        # --- HOJA 2 y 3: Detalles de Mejor Evento (40 y 60) ---
+        # --- HOJA 3,4...: Detalles de Mejor Evento (40 y 60) ---
         for g in [40, 60]:
             if best_events_per_group[g]:
                 global_best = best_events_per_group[g][0]
                 
+                # Mapa individual
+                img_buf_gps = Plotter.plot_gps_heatmap(global_best, f"Ruta GPS (Mejor {g} km/h)")
+                if img_buf_gps:
+                    sections.append({
+                        "title": f"Mapa de Calor - Mejor {g} km/h ({global_best['pilot']})",
+                        "images": [img_buf_gps.getvalue() if hasattr(img_buf_gps, 'getvalue') else img_buf_gps],
+                        "table_data": None
+                    })
+                
+                # Gráficas
                 img_buf_v = Plotter.plot_speed_vs_time([global_best], f"Velocidad vs Tiempo (Mejor {g} km/h)")
                 img_buf_rpm = None
                 if 'RPM' in global_best['df'].columns:
                     img_buf_rpm = Plotter.plot_rpm_vs_time(global_best, f"RPM vs Tiempo (Mejor {g} km/h)")
                 img_buf_acc = Plotter.plot_accel_vs_time(global_best, f"Aceleración vs Tiempo (Mejor {g} km/h)")
-                img_buf_gps = Plotter.plot_gps_heatmap(global_best, f"Ruta GPS (Mejor {g} km/h)")
                 
                 m = global_best['metrics']
                 single_table = [
@@ -231,17 +244,13 @@ class AnalysisController:
                 ]
                 
                 images = []
-                if img_buf_gps:
-                    images.append(img_buf_gps.getvalue() if hasattr(img_buf_gps, 'getvalue') else img_buf_gps)
-                
                 images.append(img_buf_v.getvalue() if hasattr(img_buf_v, 'getvalue') else img_buf_v)
-                
                 if img_buf_rpm:
                     images.append(img_buf_rpm.getvalue() if hasattr(img_buf_rpm, 'getvalue') else img_buf_rpm)
                 images.append(img_buf_acc.getvalue() if hasattr(img_buf_acc, 'getvalue') else img_buf_acc)
                 
                 sections.append({
-                    "title": f"Frenado a {g} km/h - Análisis del Mejor Evento ({global_best['pilot']})",
+                    "title": f"Gráficas del Mejor Evento a {g} km/h ({global_best['pilot']})",
                     "images": images,
                     "table_data": single_table
                 })
@@ -254,7 +263,9 @@ class AnalysisController:
             "comments": comments,
             "env_conditions": env_conditions,
             "sections": sections,
-            "ranking_entries": ranking_entries
+            "ranking_entries": ranking_entries,
+            "contexto_gps": contexto_gps,
+            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
         }
         
         return True, preview_data
@@ -301,10 +312,22 @@ class AnalysisController:
         
         reporter = PDFReporter(filepath)
                 
+        contexto_gps = preview_data.get('contexto_gps')
+        context_map = preview_data.get('context_map')
+        
         # Depending on test type, pass the mapped name to formatting logic
-        reporter.add_header(moto_info, pilots_info, comments, env_conditions, test_type=prueba_name)
+        reporter.add_header(
+            moto_info, 
+            pilots_info, 
+            comments, 
+            env_conditions, 
+            test_type=prueba_name, 
+            contexto_gps=contexto_gps, 
+            context_map=context_map
+        )
         
         for sec in sections:
+            reporter.add_page_break()
             reporter.add_section(sec['title'])
             
             for img_bytes in sec.get('images', []):
@@ -317,8 +340,6 @@ class AnalysisController:
                 table = sec['table_data']
                 reporter.add_table(table)
                 
-            reporter.add_page_break()
-            
         success = reporter.build()
         
         if success and preview_data.get('ranking_entries'):
@@ -380,10 +401,15 @@ class AnalysisController:
         top_3_events = all_events[:3]
         best_event = all_events[0]
         
+        # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
+        from analyzer import get_gps_context
+        contexto_gps = get_gps_context(best_event['df'])
+        img_buf_gps_main = Plotter.plot_gps_heatmap(best_event, "Mapa de Contexto (Ubicación de Prueba)")
+        
         # --- PREVIEW SECTIONS PREPARATION ---
         sections = []
         
-        # Summary 3 Best Events
+        # Summary 3 Best Events (Hoja 2)
         img_buf = Plotter.plot_acceleration_comparison(top_3_events, "Comparativa: Velocidad vs Tiempo (Top 3)")
         
         table_data_summary = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
@@ -400,24 +426,25 @@ class AnalysisController:
             ]
             table_data_summary.append(row)
             
-        images_hoja1 = []
-        if top_3_events:
-            img_buf_gps_main = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Mejor Desempeño General)")
-            if img_buf_gps_main:
-                images_hoja1.append(img_buf_gps_main.getvalue() if hasattr(img_buf_gps_main, 'getvalue') else img_buf_gps_main)
-        images_hoja1.append(img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf)
-        
         sections.append({
-            "title": "Aceleración 0-80 km/h - Resumen 3 Mejores",
-            "images": images_hoja1,
+            "title": "Hoja 2: Aceleración 0-80 km/h - Resumen 3 Mejores",
+            "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
             "table_data": table_data_summary
         })
         
-        # Best Event Details
+        # Best Event Details Mapa (Hoja 3)
+        img_detail_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Mejor Evento)")
+        if img_detail_gps:
+            sections.append({
+                "title": f"Hoja 3: Mapa de Calor - Mejor Evento ({best_event['pilot']})",
+                "images": [img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps],
+                "table_data": None
+            })
+            
+        # Best Event Details Gráficas (Hoja 4)
         img_detail_v = Plotter.plot_acceleration_detailed(best_event, "Análisis Detallado: Velocidad vs Tiempo")
         img_detail_a = Plotter.plot_accel_vs_time(best_event, "Aceleración Promedio vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
         img_detail_rpm = Plotter.plot_rpm_vs_time(best_event, "RPM vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
-        img_detail_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Mejor Evento)")
         
         table_segments = [
             ["Tramo (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]
@@ -462,9 +489,6 @@ class AnalysisController:
             ])
             
         final_images = []
-        if img_detail_gps:
-            final_images.append(img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps)
-            
         final_images.extend([
             img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
             img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm,
@@ -472,7 +496,7 @@ class AnalysisController:
         ])
         
         sections.append({
-            "title": f"Mejor Evento - Detalle: Evento {best_event['id']} ({best_event['pilot']})",
+            "title": f"Hoja 4: Gráficas Mejor Evento - Evento {best_event['id']} ({best_event['pilot']})",
             "images": final_images,
             "table_data": table_segments
         })
@@ -485,7 +509,9 @@ class AnalysisController:
             "inputs": inputs,
             "comments": comments,
             "env_conditions": env_conditions,
-            "sections": sections
+            "sections": sections,
+            "contexto_gps": contexto_gps,
+            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
         }
         
         return True, preview_data
@@ -559,10 +585,20 @@ class AnalysisController:
         if not combined_best:
              return False, "No valid events found after filtering."
              
+        # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
+        from analyzer import get_gps_context
+        contexto_gps = {}
+        img_buf_gps_main = None
+        
+        if combined_best:
+            abs_best = sorted(combined_best, key=lambda x: x['metrics']['v_final'], reverse=True)[0]
+            contexto_gps = get_gps_context(abs_best['df'])
+            img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Mapa de Contexto (Ubicación de Prueba)")
+             
         # --- PREVIEW SECTIONS PREPARATION ---
         sections = []
         
-        # --- Page 1: Combined ---
+        # --- Hoja 2: Resumen Combinado ---
         img_buf1 = Plotter.plot_speed_vs_time(combined_best, "Comparativa Velocidad vs Tiempo")
         
         table_data_combined = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
@@ -579,27 +615,28 @@ class AnalysisController:
             ]
             table_data_combined.append(row)
             
-        images_hoja1 = []
-        if combined_best:
-            abs_best = sorted(combined_best, key=lambda x: x['metrics']['v_final'], reverse=True)[0]
-            img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Ruta GPS (Mejor Desempeño General)")
-            if img_buf_gps_main:
-                images_hoja1.append(img_buf_gps_main.getvalue() if hasattr(img_buf_gps_main, 'getvalue') else img_buf_gps_main)
-        images_hoja1.append(img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1)
-        
         sections.append({
-            "title": "Ascenso 0-70m - Resumen Mejores Eventos (Solo vs Pasajero)",
-            "images": images_hoja1,
+            "title": "Hoja 2: Ascenso 0-70m - Resumen Mejores Eventos",
+            "images": [img_buf1.getvalue() if hasattr(img_buf1, 'getvalue') else img_buf1],
             "table_data": table_data_combined
         })
         
-        # --- Page 2: Best Solo Detail ---
+        # --- Detalles de Mejor Evento Solo ---
         if best_solo:
             bs = best_solo[0]
+            # Hoja impar: Mapa GPS
+            img_gps = Plotter.plot_gps_heatmap(bs, "Ruta GPS (Mejor Evento Solo)")
+            if img_gps:
+                sections.append({
+                    "title": f"Mapa de Calor - Mejor Evento Solo ({bs['pilot']})",
+                    "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
+                    "table_data": None
+                })
+                
+            # Hoja par: Gráficas Individuales
             img_bs1 = Plotter.plot_climbing_detailed(bs, "Velocidad vs Tiempo (Detalle)")
             img_rpm = Plotter.plot_rpm_vs_time(bs, "RPM vs Tiempo", markers=bs['metrics'].get('markers'))
             img_acc = Plotter.plot_accel_vs_time(bs, "Aceleración vs Tiempo", markers=bs['metrics'].get('markers'))
-            img_gps = Plotter.plot_gps_heatmap(bs, "Ruta GPS (Mejor Evento Solo)")
             
             m = bs['metrics']
             t2 = [
@@ -608,9 +645,6 @@ class AnalysisController:
             ]
             
             ims = []
-            if img_gps:
-                ims.append(img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps)
-                
             ims.extend([
                 img_bs1.getvalue() if hasattr(img_bs1, 'getvalue') else img_bs1,
                 img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm,
@@ -618,18 +652,27 @@ class AnalysisController:
             ])
                 
             sections.append({
-                "title": f"Mejor Evento Solo - {bs['pilot']}",
+                "title": f"Gráficas Mejor Evento Solo ({bs['pilot']})",
                 "images": ims,
                 "table_data": t2
             })
 
-        # --- Page 3: Best Passenger Detail ---
+        # --- Detalles de Mejor Evento Pasajero ---
         if best_pass:
             bp = best_pass[0]
+            # Hoja impar: Mapa GPS
+            img_gps_p = Plotter.plot_gps_heatmap(bp, "Ruta GPS (Mejor Evento Pasajero)")
+            if img_gps_p:
+                sections.append({
+                    "title": f"Mapa de Calor - Mejor Evento Pasajero ({bp['pilot']})",
+                    "images": [img_gps_p.getvalue() if hasattr(img_gps_p, 'getvalue') else img_gps_p],
+                    "table_data": None
+                })
+                
+            # Hoja par: Gráficas Individuales
             img_bp1 = Plotter.plot_climbing_detailed(bp, "Velocidad vs Tiempo (Detalle)")
             img_rpm_p = Plotter.plot_rpm_vs_time(bp, "RPM vs Tiempo", markers=bp['metrics'].get('markers'))
             img_acc_p = Plotter.plot_accel_vs_time(bp, "Aceleración vs Tiempo", markers=bp['metrics'].get('markers'))
-            img_gps_p = Plotter.plot_gps_heatmap(bp, "Ruta GPS (Mejor Evento Pasajero)")
             
             m = bp['metrics']
             t3 = [
@@ -638,9 +681,6 @@ class AnalysisController:
             ]
             
             ims_p = []
-            if img_gps_p:
-                ims_p.append(img_gps_p.getvalue() if hasattr(img_gps_p, 'getvalue') else img_gps_p)
-                
             ims_p.extend([
                 img_bp1.getvalue() if hasattr(img_bp1, 'getvalue') else img_bp1,
                 img_rpm_p.getvalue() if hasattr(img_rpm_p, 'getvalue') else img_rpm_p,
@@ -648,15 +688,11 @@ class AnalysisController:
             ])
                 
             sections.append({
-                "title": f"Mejor Evento Pasajero - {bp['pilot']}",
+                "title": f"Gráficas Mejor Evento Pasajero ({bp['pilot']})",
                 "images": ims_p,
                 "table_data": t3
             })
             
-        # Instead of directly returning true and pdf path, return data necessary for Preview / PDF
-        # Note: We need a synthetic 'inputs' struct for generate_pdf to write the header properly
-        # Or modify generate_pdf to handle single dicts vs lists.
-        # Let's mock the 'inputs' structure using the pilots info format
         inputs = []
         if solo_data: inputs.append({'pilot': f"Solo: {solo_data['pilot']}", 'weight': solo_data['weight']})
         if passenger_data: inputs.append({'pilot': f"Pass: {passenger_data['pilot']} + {passenger_data.get('passenger', '')}", 'weight': passenger_data['weight']})
@@ -667,7 +703,9 @@ class AnalysisController:
             "inputs": inputs,
             "comments": comments,
             "env_conditions": env_conditions,
-            "sections": sections
+            "sections": sections,
+            "contexto_gps": contexto_gps,
+            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
         }
         
         return True, preview_data
@@ -735,8 +773,10 @@ class AnalysisController:
                 }
                 export_event_to_csv(valid_evt, self.output_dir, moto_data, lugar_name, test_name="Recuperacion")
                 
-            # --- PREVIEW SECTIONS PREPARATION ---
-            sections = []
+            # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
+            from analyzer import get_gps_context
+            contexto_gps = {}
+            img_buf_gps_main = None
             
             # Reconstruct into standard format for plotter
             plot_input = []
@@ -756,8 +796,16 @@ class AnalysisController:
                     'file_type': f"Start {g}km/h"
                 }
                 plot_input.append(valid_evt)
+                
+            if plot_input:
+                abs_best = sorted(plot_input, key=lambda x: x['metrics']['dist_m'])[0]
+                contexto_gps = get_gps_context(abs_best['df'])
+                img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Mapa de Contexto (Ubicación de Prueba)")
+                
+            # --- PREVIEW SECTIONS PREPARATION ---
+            sections = []
             
-            # --- Combined Page ---
+            # --- Combined Page (Hoja 2) ---
             img_buf = Plotter.plot_speed_vs_time(plot_input, "Comparativa Velocidad vs Tiempo")
             
             table_data = [["Evento", "V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]]
@@ -773,21 +821,13 @@ class AnalysisController:
                     f"{int(be['top_rpm'])}"
                 ])
                 
-            images_hoja1 = []
-            if plot_input:
-                abs_best = sorted(plot_input, key=lambda x: x['metrics']['dist_m'])[0]
-                img_buf_gps_main = Plotter.plot_gps_heatmap(abs_best, "Ruta GPS (Mejor Desempeño General)")
-                if img_buf_gps_main:
-                    images_hoja1.append(img_buf_gps_main.getvalue() if hasattr(img_buf_gps_main, 'getvalue') else img_buf_gps_main)
-            images_hoja1.append(img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf)
-            
             sections.append({
-                "title": "Recuperación - Resumen Mejores Eventos",
-                "images": images_hoja1,
+                "title": "Hoja 2: Recuperación - Resumen Mejores Eventos",
+                "images": [img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf],
                 "table_data": table_data
             })
             
-            # --- Detailed Pages ---
+            # --- Detailed Pages (Hoja 3, 4, etc) ---
             for g in sorted_groups:
                 be = best_events[g]
                 valid_evt = {
@@ -795,14 +835,22 @@ class AnalysisController:
                     'metrics': be
                 }
                 
-                img1 = Plotter.plot_speed_vs_time([valid_evt], f"Velocidad - Grupo {g}")
+                # Page impar (Mapa)
+                img_gps = Plotter.plot_gps_heatmap(valid_evt, f"Ruta GPS - Grupo {g}")
+                if img_gps:
+                    sections.append({
+                        "title": f"Mapa de Calor - Inicio ~{g} km/h ({pilot})",
+                        "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
+                        "table_data": None
+                    })
                 
+                # Page par (Gráficas)
+                img1 = Plotter.plot_speed_vs_time([valid_evt], f"Velocidad - Grupo {g}")
                 img_rpm = None
                 if 'RPM' in be['df'].columns:
                      img_rpm = Plotter.plot_rpm_vs_time(valid_evt, f"RPM - Grupo {g}")
-
+                     
                 img_acc = Plotter.plot_accel_vs_time(valid_evt, f"Aceleración - Grupo {g}")
-                img_gps = Plotter.plot_gps_heatmap(valid_evt, f"Ruta GPS - Grupo {g}")
                 
                 stats = [
                     ["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"],
@@ -817,17 +865,13 @@ class AnalysisController:
                 ]
                 
                 images = []
-                if img_gps:
-                    images.append(img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps)
-                    
                 images.append(img1.getvalue() if hasattr(img1, 'getvalue') else img1)
-                
                 if img_rpm:
                     images.append(img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm)
                 images.append(img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc)
                 
                 sections.append({
-                    "title": f"Detalle: Inicio ~{g} km/h",
+                    "title": f"Gráficas Detalle: Inicio ~{g} km/h ({pilot})",
                     "images": images,
                     "table_data": stats
                 })
@@ -838,7 +882,9 @@ class AnalysisController:
                 "inputs": [data], # unified array pattern
                 "comments": comments,
                 "env_conditions": env_conditions,
-                "sections": sections
+                "sections": sections,
+                "contexto_gps": contexto_gps,
+                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
             }
             
             return True, preview_data
@@ -892,6 +938,11 @@ class AnalysisController:
             lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
             export_event_to_csv(best_event, self.output_dir, moto_data, lugar_name, test_name="Velocidad_Maxima")
             
+            # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
+            from analyzer import get_gps_context
+            contexto_gps = get_gps_context(best_event['df'])
+            img_buf_gps_main = Plotter.plot_gps_heatmap(best_event, "Mapa de Contexto (Ubicación de Prueba)")
+            
             # --- PREVIEW SECTIONS PREPARATION ---
             sections = []
             
@@ -922,27 +973,33 @@ class AnalysisController:
                  img_rpm = Plotter.plot_rpm_vs_time(best_event, "RPM vs Tiempo")
 
             img_acc = Plotter.plot_accel_vs_time(best_event, "Aceleración vs Tiempo")
-            img_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Velocidad Máxima)")
             
-            images = []
+            # Hoja 2: Resumen V Max
+            sections.append({
+                "title": f"Hoja 2: Velocidad Máxima - Métrica Principal ({pilot})",
+                "images": [img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v],
+                "table_data": stats_extra
+            })
+            
+            # Hoja 3: Mapa GPS
+            img_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Velocidad Máxima)")
             if img_gps:
-                images.append(img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps)
-                
-            images.append(img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v)
+                sections.append({
+                    "title": f"Hoja 3: Mapa de Calor - Velocidad Máxima",
+                    "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
+                    "table_data": None
+                })
+            
+            # Hoja 4: Gráficas detalladas
+            images = []
             if img_rpm:
                 images.append(img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm)
             images.append(img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc)
             
             sections.append({
-                "title": f"Velocidad Máxima - Mejor Evento ({pilot})",
+                "title": f"Hoja 4: Gráficas Secundarias",
                 "images": images,
                 "table_data": stats
-            })
-            
-            sections.append({
-                "title": "Métrica Principal",
-                "images": [],
-                "table_data": stats_extra
             })
 
             preview_data = {
@@ -951,7 +1008,9 @@ class AnalysisController:
                 "inputs": [data],
                 "comments": comments,
                 "env_conditions": env_conditions,
-                "sections": sections
+                "sections": sections,
+                "contexto_gps": contexto_gps,
+                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
             }
             
             return True, preview_data
