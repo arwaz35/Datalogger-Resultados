@@ -250,8 +250,8 @@ class App(ctk.CTk):
         table_frame = ctk.CTkScrollableFrame(self)
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
-        headers = ["Nom. Comercial", "Cod. Modelo", "Placa", "Cilindraje", "Peso(Kg)", "Potencia", "Torque"]
-        widths = [200, 150, 100, 100, 100, 100, 100]
+        headers = ["Nom. Comercial", "Cod. Modelo", "Placa", "Cilindraje", "Chasis", "Motor", "Peso(Kg)", "Potencia", "Torque"]
+        widths = [160, 120, 90, 80, 120, 120, 70, 70, 70]
         
         header_f = ctk.CTkFrame(table_frame, fg_color="gray30")
         header_f.pack(fill="x", pady=2)
@@ -283,7 +283,7 @@ class App(ctk.CTk):
                 row.bind("<Button-1>", lambda e, x=i, r=row: select_row(x, r))
                 
                 vals = [m.get('Nombre Comercial',''), m.get('Código Modelo',''), m.get('Placa',''),
-                        m.get('Cilindraje (cc)',''), m.get('Peso (Kg)',''), m.get('Potencia (Hp)',''), m.get('Torque (Nm)','')]
+                        m.get('Cilindraje (cc)',''), m.get('Chasis',''), m.get('Motor',''), m.get('Peso (Kg)',''), m.get('Potencia (Hp)',''), m.get('Torque (Nm)','')]
                 
                 for j, v in enumerate(vals):
                     lbl = ctk.CTkLabel(row, text=v, width=widths[j])
@@ -297,10 +297,10 @@ class App(ctk.CTk):
         def start_add_moto():
             win = ctk.CTkToplevel(self)
             win.title("Agregar Motocicleta")
-            win.geometry("400x500")
+            win.geometry("400x600")
             win.attributes("-topmost", True)
             
-            fields = ["Fecha", "Nombre Comercial", "Placa", "Código Modelo", "Cilindraje (cc)", "Peso (Kg)", "Potencia (Hp)", "Torque (Nm)"]
+            fields = ["Fecha", "Nombre Comercial", "Placa", "Código Modelo", "Chasis", "Motor", "Cilindraje (cc)", "Peso (Kg)", "Potencia (Hp)", "Torque (Nm)"]
             entries = {}
             for f in fields:
                 r = ctk.CTkFrame(win)

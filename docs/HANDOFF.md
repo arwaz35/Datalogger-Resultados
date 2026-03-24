@@ -640,3 +640,34 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### 🚀 Control de Versiones (v2.4.4)
 - Mejoras de renderizado y maquetación PDF.
+
+---
+
+## Sesión: 23 de Marzo de 2026 (Nuevas Variables de Moto)
+
+### 🎯 Objetivo Principal
+- Añadir las variables "Chasis" y "Motor" al registro y gestión de las motocicletas, y a la generación de reportes PDF.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Modificar el módulo donde se guardan las motos para incluir los datos de chasis y motor.
+
+### 🧠 Decisiones Tomadas
+- Se actualizó la interfaz de la tabla en `main.py` (`show_gestion_motos_view`) para mostrar las nuevas columnas "Chasis" y "Motor".
+- Se ajustó el formulario de agregar motocicleta (`start_add_moto`) en `main.py` para incluir los nuevos campos de entrada y actualizar el tamaño de la ventana.
+- Se modificó `reporter.py` (`add_header`) para renderizar "Chasis" y "Motor" en la cabecera técnica de la hoja de detalles por cada generación de PDF.
+- Los nuevos datos se agregan orgánicamente en `motos.json` a través de los diccionarios, manteniendo la total retrocompatibilidad paramétrica para las motocicletas previamente registradas al invocar un `dict.get()`.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `main.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 🚀 Control de Versiones (v2.5.0)
+- Actualización de versión (minor) por la adición de parámetros nativos en la ficha de registros de Motocicleta.
+
+### 💻 Comandos Ejecutados
+*(Edición de interfaces y PDFs. Validación exitosa)*
+
+### ⏳ Pendientes
+- Estructuración e inicialización del modo "Todas las pruebas".
