@@ -88,6 +88,11 @@ class PreviewWindow(ctk.CTkToplevel):
 
     def _add_image(self, img_bytes):
         try:
+            if isinstance(img_bytes, dict):
+                img_bytes = img_bytes.get('bytes')
+            if not img_bytes:
+                return
+                
             image = Image.open(io.BytesIO(img_bytes))
             # Calculate a width that fits well, maintaining aspect ratio
             target_width = 800
