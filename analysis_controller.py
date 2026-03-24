@@ -302,7 +302,7 @@ class AnalysisController:
         seen_pilots = set()
         for inp in inputs:
             if inp['pilot'] not in seen_pilots:
-                pilots_info.append({'name': inp['pilot'], 'weight': inp['weight']})
+                pilots_info.append({'name': inp['pilot'], 'weight': inp['weight'], 'altura': inp.get('altura', '0')})
                 seen_pilots.add(inp['pilot'])
                 
         lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'

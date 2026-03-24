@@ -92,7 +92,7 @@ class PDFReporter:
             self.elements.append(Spacer(1, 12))
         
         # Pilot Info
-        pilot_text = ", ".join([f"{p['name']} ({p['weight']} Kg)" for p in pilots_info])
+        pilot_text = ", ".join([f"{p['name']} ({p['weight']} Kg, {p.get('altura', 0)} cm)" for p in pilots_info])
         self.elements.append(Paragraph(f"<b>Pilotos:</b> {pilot_text}", self.styles['Normal']))
         
         if comments:

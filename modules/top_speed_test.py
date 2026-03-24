@@ -70,9 +70,11 @@ class TopSpeedTest(ctk.CTkFrame):
             return False, "Por favor seleccione un piloto."
             
         weight = 0
+        altura = 0 # Initialize altura
         for p_dict in pilotos_data:
             if p_dict.get('nombre') == pilot:
                 weight = p_dict.get('peso', 0)
+                altura = p_dict.get('altura', 0) # Get altura
                 break
                 
         if not filepath or not os.path.exists(filepath):
@@ -81,6 +83,7 @@ class TopSpeedTest(ctk.CTkFrame):
         inputs = [{
             'pilot': pilot,
             'weight': float(weight),
+            'altura': float(altura), # Add altura to inputs
             'filepath': filepath
         }]
         

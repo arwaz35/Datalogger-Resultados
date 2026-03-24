@@ -104,19 +104,21 @@ class ClimbingTest(ctk.CTkFrame):
     def get_data(self):
         pilotos_data = self.data_manager.load_pilotos()
         
-        def get_pilot_weight(name):
+        def get_pilot_details(name):
             for p in pilotos_data:
-                if p.get('nombre') == name: return float(p.get('peso', 0))
-            return 0.0
+                if p.get('nombre') == name: return float(p.get('peso', 0)), float(p.get('altura', 0))
+            return 0.0, 0.0
 
         # Validate Solo Section
         solo_data = None
         s_path = self.solo_file_entry.get()
         if s_path and os.path.exists(s_path):
             p_name = self.solo_pilot_combo.get()
+            s_w, s_a = get_pilot_details(p_name)
             solo_data = {
                 'pilot': p_name,
-                'weight': str(get_pilot_weight(p_name)),
+                'weight': str(s_w),
+                'altura': str(s_a),
                 'filepath': s_path,
                 'type': 'SOLO'
             }
@@ -128,8 +130,8 @@ class ClimbingTest(ctk.CTkFrame):
             pilot_name = self.pp_pilot_combo.get()
             pass_name = self.pp_passenger_combo.get()
             
-            p_w = get_pilot_weight(pilot_name)
-            pass_w = get_pilot_weight(pass_name)
+            p_w, p_a = get_pilot_details(pilot_name)
+            pass_w, pass_a = get_pilot_details(pass_name)
             extra_w = float(self.pp_extra_weight.get() or 0)
             
             passenger_data = {
@@ -140,6 +142,7 @@ class ClimbingTest(ctk.CTkFrame):
                 'extra_weight': str(extra_w),
                 'filepath': p_path,
                 'weight': str(p_w + pass_w + extra_w), # Total weight
+                'altura': str(p_a),
                 'type': 'PASSENGER'
             }
             

@@ -1,30 +1,37 @@
 [
     {
         "nombre": "Daniel Velasquez",
-        "peso": 75.0
+        "peso": 75.0,
+        "altura": 175.0
     },
     {
         "nombre": "Jorge Ceballos",
-        "peso": 83.5
+        "peso": 83.5,
+        "altura": 0.0
     },
     {
         "nombre": "Alexander Gomez",
-        "peso": 0
+        "peso": 0.0,
+        "altura": 0.0
     },
     {
         "nombre": "Andres Felipe Parra",
-        "peso": 0
+        "peso": 0.0,
+        "altura": 0.0
     },
     {
         "nombre": "Jorge Londo\u00f1o",
-        "peso": 82.5
+        "peso": 82.5,
+        "altura": 0.0
     },
     {
         "nombre": "Fredy Valencia",
-        "peso": 0
+        "peso": 0.0,
+        "altura": 0.0
     },
     {
         "nombre": "Laura Barrientos",
-        "peso": 0
+        "peso": 0.0,
+        "altura": 0.0
     }
 ]

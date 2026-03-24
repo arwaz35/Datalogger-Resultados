@@ -428,15 +428,15 @@ class App(ctk.CTk):
         table_frame = ctk.CTkScrollableFrame(self)
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
-        headers = ["Nombre del Piloto", "Peso Acumulado (Kg)"]
-        widths = [400, 200]
+        headers = ["Nombre del Piloto", "Peso Acumulado (Kg)", "Altura (cm)"]
+        widths = [250, 150, 150]
         
         header_f = ctk.CTkFrame(table_frame, fg_color="gray30")
         header_f.pack(fill="x", pady=2)
         for i, h in enumerate(headers):
             ctk.CTkLabel(header_f, text=h, width=widths[i], font=("Arial", 12, "bold")).pack(side="left", padx=2)
             
-        selected_idx = {'nombre': None, 'widget': None, 'peso': 0}
+        selected_idx = {'nombre': None, 'widget': None, 'peso': 0, 'altura': 0}
         
         def refresh_table():
             for w in table_frame.winfo_children():
@@ -447,12 +447,13 @@ class App(ctk.CTk):
             btn_eliminar.configure(state="disabled")
             btn_actualizar.configure(state="disabled")
             
-            def select_row(nombre, peso, row_widget):
+            def select_row(nombre, peso, altura, row_widget):
                 if selected_idx['widget']:
                     try: selected_idx['widget'].configure(fg_color=["gray86", "gray17"])
                     except: pass
                 selected_idx['nombre'] = nombre
                 selected_idx['peso'] = peso
+                selected_idx['altura'] = altura
                 selected_idx['widget'] = row_widget
                 row_widget.configure(fg_color=["#3B8ED0", "#1F6AA5"])
                 btn_eliminar.configure(state="normal")
@@ -464,15 +465,16 @@ class App(ctk.CTk):
                 
                 nom = p.get('nombre', '')
                 pes = p.get('peso', 0)
+                alt = p.get('altura', 0)
                 
-                row.bind("<Button-1>", lambda e, n=nom, w=pes, r=row: select_row(n, w, r))
+                row.bind("<Button-1>", lambda e, n=nom, w=pes, a=alt, r=row: select_row(n, w, a, r))
                 
-                vals = [nom, str(pes)]
+                vals = [nom, str(pes), str(alt)]
                 
                 for j, v in enumerate(vals):
                     lbl = ctk.CTkLabel(row, text=v, width=widths[j])
                     lbl.pack(side="left", padx=2)
-                    lbl.bind("<Button-1>", lambda e, n=nom, w=pes, r=row: select_row(n, w, r))
+                    lbl.bind("<Button-1>", lambda e, n=nom, w=pes, a=alt, r=row: select_row(n, w, a, r))
 
         ctrl = ctk.CTkFrame(self, fg_color="transparent")
         ctrl.pack(fill="x", padx=20, pady=10)
@@ -480,7 +482,7 @@ class App(ctk.CTk):
         def start_add_piloto():
             win = ctk.CTkToplevel(self)
             win.title("Agregar Piloto")
-            win.geometry("400x200")
+            win.geometry("400x250")
             win.attributes("-topmost", True)
             
             r1 = ctk.CTkFrame(win)
@@ -495,15 +497,24 @@ class App(ctk.CTk):
             e_p = ctk.CTkEntry(r2)
             e_p.pack(side="right", fill="x", expand=True, padx=5)
             
+            r3 = ctk.CTkFrame(win)
+            r3.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r3, text="Altura (cm):").pack(side="left", padx=5)
+            e_a = ctk.CTkEntry(r3)
+            e_a.pack(side="right", fill="x", expand=True, padx=5)
+            
             def save():
                 npm = e_n.get().strip()
                 try: p_val = float(e_p.get().replace(',','.')) if e_p.get() else 0.0
                 except ValueError: p_val = 0.0
                 
+                try: a_val = float(e_a.get().replace(',','.')) if e_a.get() else 0.0
+                except ValueError: a_val = 0.0
+                
                 if not npm:
                     messagebox.showerror("Error", "Nombre es obligatorio", parent=win)
                     return
-                self.data_manager.add_piloto(npm, p_val)
+                self.data_manager.add_piloto(npm, p_val, a_val)
                 refresh_table()
                 win.destroy()
             ctk.CTkButton(win, text="Guardar", command=save).pack(pady=20)
@@ -512,11 +523,12 @@ class App(ctk.CTk):
             if selected_idx['nombre'] is None: return
             win = ctk.CTkToplevel(self)
             win.title("Actualizar Piloto")
-            win.geometry("400x200")
+            win.geometry("400x250")
             win.attributes("-topmost", True)
             
             old_name = selected_idx['nombre']
             old_weight = selected_idx['peso']
+            old_height = selected_idx['altura']
             
             r1 = ctk.CTkFrame(win)
             r1.pack(fill="x", padx=10, pady=10)
@@ -532,13 +544,23 @@ class App(ctk.CTk):
             e_p.pack(side="right", fill="x", expand=True, padx=5)
             e_p.insert(0, str(old_weight))
             
+            r3 = ctk.CTkFrame(win)
+            r3.pack(fill="x", padx=10, pady=10)
+            ctk.CTkLabel(r3, text="Altura (cm):").pack(side="left", padx=5)
+            e_a = ctk.CTkEntry(r3)
+            e_a.pack(side="right", fill="x", expand=True, padx=5)
+            e_a.insert(0, str(old_height))
+            
             def save():
                 npm = e_n.get().strip()
                 try: p_val = float(e_p.get().replace(',','.')) if e_p.get() else 0.0
                 except ValueError: p_val = 0.0
                 
+                try: a_val = float(e_a.get().replace(',','.')) if e_a.get() else 0.0
+                except ValueError: a_val = 0.0
+                
                 if not npm: return
-                self.data_manager.update_piloto(old_name, npm, p_val)
+                self.data_manager.update_piloto(old_name, npm, p_val, a_val)
                 refresh_table()
                 win.destroy()
             ctk.CTkButton(win, text="Actualizar", command=save).pack(pady=20)

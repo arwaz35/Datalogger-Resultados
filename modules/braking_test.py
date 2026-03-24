@@ -78,15 +78,18 @@ class BrakingTest(ctk.CTkFrame):
             if path and os.path.exists(path) and pilot and pilot != "Seleccione Piloto...":
                 # Find exactly what weight the pilot has
                 weight = 0
+                altura = 0
                 for p_dict in pilotos_data:
                     if p_dict.get('nombre') == pilot:
                         weight = p_dict.get('peso', 0)
+                        altura = p_dict.get('altura', 0)
                         break
                         
                 valid_inputs.append({
                     'filepath': path,
                     'pilot': pilot,
-                    'weight': str(weight)
+                    'weight': str(weight),
+                    'altura': str(altura)
                 })
         return valid_inputs
 

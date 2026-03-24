@@ -59,9 +59,12 @@ class DataManager:
             modified = False
             for item in data:
                 if isinstance(item, str):
-                    migrated_data.append({"nombre": item, "peso": 0})
+                    migrated_data.append({"nombre": item, "peso": 0, "altura": 0})
                     modified = True
                 else:
+                    if "altura" not in item:
+                        item["altura"] = 0
+                        modified = True
                     migrated_data.append(item)
                     
             if modified:
@@ -75,18 +78,19 @@ class DataManager:
         with open(PILOTOS_FILE, 'w') as f:
             json.dump(pilotos, f, indent=4)
 
-    def add_piloto(self, nombre, peso=0):
+    def add_piloto(self, nombre, peso=0, altura=0):
         pilotos = self.load_pilotos()
         if not any(p.get('nombre') == nombre for p in pilotos): # Prevent duplicates
-            pilotos.append({"nombre": nombre, "peso": peso})
+            pilotos.append({"nombre": nombre, "peso": peso, "altura": altura})
             self.save_pilotos(pilotos)
 
-    def update_piloto(self, old_nombre, new_nombre, new_peso):
+    def update_piloto(self, old_nombre, new_nombre, new_peso, new_altura):
         pilotos = self.load_pilotos()
         for p in pilotos:
             if p.get('nombre') == old_nombre:
                 p['nombre'] = new_nombre
                 p['peso'] = new_peso
+                p['altura'] = new_altura
                 break
         self.save_pilotos(pilotos)
 

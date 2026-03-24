@@ -671,3 +671,39 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### ⏳ Pendientes
 - Estructuración e inicialización del modo "Todas las pruebas".
+
+---
+
+## Sesión: 23 de Marzo de 2026 (Altura de Pilotos)
+
+### 🎯 Objetivo Principal
+- Añadir la variable "Altura" escalarmente al módulo central de Pilotos y reflejarlo en todos los análisis y PDFs.
+
+### 👤 Peticiones del Usuario (Daniel)
+- Agregar al módulo de pilotos la altura. Por defecto establecer en todos 0.
+- Variar la versión del programa.
+- Registrar estos cambios en el HANDOFF.
+
+### 🧠 Decisiones Tomadas
+- Se introdujo la variable "Altura (cm)" en los flujos principales de `data_manager.py`. Automáticamente se actualizarán (`peso: 0, altura: 0`) los pilotos antiguos sin necesidad de intervención manual durante el `load_pilotos`.
+- Se incorporó la entrada de UI para la Altura en la vista interactiva de agregar/modificar pilotos en `main.py`.
+- Se mapeó exhaustivamente el paso del dato de `altura` de los pilotos a través de todos los reportes de módulos (`braking_test`, `acceleration_0_80`, `climbing_test`, `recovery_test`, `top_speed_test`).
+- Se reescribió `reporter.py` para imprimir el texto como `Nombre (Peso Kg, Altura cm)` en la cabecera del PDF final.
+
+### 📁 Archivos Modificados / Creados
+- `[MODIFICADO]` `data_manager.py`
+- `[MODIFICADO]` `main.py`
+- `[MODIFICADO]` `reporter.py`
+- `[MODIFICADO]` `analysis_controller.py`
+- `[MODIFICADO]` `modules/*.py` (x5)
+- `[MODIFICADO]` `version.py`
+- `[MODIFICADO]` `docs/HANDOFF.md`
+
+### 🚀 Control de Versiones (v2.6.0)
+- Incremento nominal debido al rediseño topológico de variables transmitidas entre GUI, Lógica y PDF referente a los metadatos de los conductores.
+
+### 💻 Comandos Ejecutados
+*(Verificación de sintaxis de Python nativa `py_compile` exitosa tras refactor general de módulos)*
+
+### ⏳ Pendientes
+- Esperar directivas para "Todas las pruebas".
