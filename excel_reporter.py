@@ -36,7 +36,7 @@ class ExcelReporter:
             
             ws['G7'] = moto.get('Nombre Comercial', '')
             ws['G8'] = moto.get('Chasis', '')
-            ws['G9'] = moto.get('Potencia (HP)', '')
+            ws['G9'] = moto.get('Potencia (Hp)', '')
             
             ws['J7'] = moto.get('Código Modelo', '')
             ws['J8'] = moto.get('Motor', '')
@@ -51,11 +51,14 @@ class ExcelReporter:
             
             # Env Cond
             ws['H18'] = lugar.get('Nombre', '')
-            ws['H19'] = lugar.get('Altitud (m)', '')
             ctx = preview_data.get('contexto_gps', {})
+            
             if ctx:
-                ws['H20'] = f"{ctx.get('start_lat', '')}, {ctx.get('start_lon', '')}"
+                ws['H19'] = ctx.get('altitud_promedio_msnm', lugar.get('Altitud (m)', ''))
+                ws['H20'] = f"{ctx.get('latitud_inicial', '')}, {ctx.get('longitud_inicial', '')}"
                 ws['H21'] = ctx.get('google_maps_link', '')
+            else:
+                ws['H19'] = lugar.get('Altitud (m)', '')
             
             ws['K18'] = env_cond.get('temp_amb', '') if env_cond else ''
             ws['K19'] = env_cond.get('humidity', '') if env_cond else ''
@@ -78,7 +81,7 @@ class ExcelReporter:
             segments = preview_data.get('best_event_segments', [])
             # Segments will be [("0-20", t, d, a, rpm), ("0-40", ...)]
             for i, seg in enumerate(segments):
-                row = 83 + i
+                row = 90 + i
                 ws[f'F{row}'] = seg[1] # Tiempo
                 ws[f'G{row}'] = seg[2] # Distancia
                 ws[f'H{row}'] = seg[3] # Aceleracion
@@ -105,10 +108,11 @@ class ExcelReporter:
                         print(f"Error inserting image at {cell}: {e}")
             
             insert_img(preview_data.get('context_map'), 'G23')
-            insert_img(preview_data.get('img_combined'), 'C56')
-            insert_img(preview_data.get('img_detail_v'), 'C88')
-            insert_img(preview_data.get('img_detail_a'), 'C110')
-            insert_img(preview_data.get('img_detail_rpm'), 'C125')
+            insert_img(preview_data.get('img_combined'), 'B56')
+            insert_img(preview_data.get('img_detail_gps'), 'B95')
+            insert_img(preview_data.get('img_detail_v'), 'B135')
+            insert_img(preview_data.get('img_detail_a'), 'B158')
+            insert_img(preview_data.get('img_detail_rpm'), 'B173')
 
             # --- SAVE ---
             

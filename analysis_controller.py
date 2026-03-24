@@ -524,7 +524,8 @@ class AnalysisController:
             "img_combined": img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf,
             "img_detail_v": img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
             "img_detail_a": img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a,
-            "img_detail_rpm": img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm
+            "img_detail_rpm": img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm,
+            "img_detail_gps": img_detail_gps.getvalue() if (img_detail_gps and hasattr(img_detail_gps, 'getvalue')) else img_detail_gps
         }
         
         return True, preview_data
