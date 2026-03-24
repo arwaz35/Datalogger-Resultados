@@ -226,7 +226,7 @@ class AnalysisController:
                 img_buf_gps = Plotter.plot_gps_heatmap(global_best, f"Ruta GPS (Mejor {g} km/h)")
                 if img_buf_gps:
                     sections.append({
-                        "title": f"Ubicación de la prueba ({global_best['pilot']})",
+                        "title": "Ubicación de la prueba",
                         "images": [img_buf_gps.getvalue() if hasattr(img_buf_gps, 'getvalue') else img_buf_gps],
                         "table_data": None
                     })
@@ -443,7 +443,7 @@ class AnalysisController:
         img_detail_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Mejor Evento)")
         if img_detail_gps:
             sections.append({
-                "title": f"Ubicación de la prueba ({best_event['pilot']})",
+                "title": "Ubicación de la prueba",
                 "images": [{'bytes': img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps}],
                 "table_data": None
             })
@@ -516,7 +516,15 @@ class AnalysisController:
             "env_conditions": env_conditions,
             "sections": sections,
             "contexto_gps": contexto_gps,
-            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
+            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main,
+            
+            # Additional elements for Excel Generation
+            "top_3_events": top_3_events,
+            "best_event_segments": table_segments[1:], # skip header
+            "img_combined": img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf,
+            "img_detail_v": img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
+            "img_detail_a": img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a,
+            "img_detail_rpm": img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm
         }
         
         return True, preview_data
@@ -634,7 +642,7 @@ class AnalysisController:
             img_gps = Plotter.plot_gps_heatmap(bs, "Ruta GPS (Mejor Evento Solo)")
             if img_gps:
                 sections.append({
-                    "title": f"Ubicación de la prueba (Solo: {bs['pilot']})",
+                    "title": "Ubicación de la prueba",
                     "images": [{'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps}],
                     "table_data": None
                 })
@@ -668,7 +676,7 @@ class AnalysisController:
             img_gps_p = Plotter.plot_gps_heatmap(bp, "Ruta GPS (Mejor Evento Pasajero)")
             if img_gps_p:
                 sections.append({
-                    "title": f"Mapa de Calor - Mejor Evento Pasajero ({bp['pilot']})",
+                    "title": "Ubicación de la prueba",
                     "images": [{'bytes': img_gps_p.getvalue() if hasattr(img_gps_p, 'getvalue') else img_gps_p}],
                     "table_data": None
                 })
@@ -842,7 +850,7 @@ class AnalysisController:
                 img_gps = Plotter.plot_gps_heatmap(valid_evt, f"Ruta GPS - Grupo {g}")
                 if img_gps:
                     sections.append({
-                        "title": f"Mapa de Calor - Inicio ~{g} km/h ({pilot})",
+                        "title": "Ubicación de la prueba",
                         "images": [{'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps}],
                         "table_data": None
                     })
@@ -989,7 +997,7 @@ class AnalysisController:
             img_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Velocidad Máxima)")
             if img_gps:
                 sections.append({
-                    "title": f"Hoja 3: Mapa de Calor - Velocidad Máxima",
+                    "title": "Ubicación de la prueba",
                     "images": [img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps],
                     "table_data": None
                 })

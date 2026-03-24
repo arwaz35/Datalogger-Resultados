@@ -99,7 +99,17 @@ class Acceleration080Test(ctk.CTkFrame):
                     else:
                         messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
                         
-                PreviewWindow(self, "Previsualización - Aceleración 0-80 km/h", result['sections'], on_confirm, contexto_gps=result.get('contexto_gps'), context_map=result.get('context_map'))
+                def on_excel(p_data):
+                    from excel_reporter import ExcelReporter
+                    try:
+                        r = ExcelReporter()
+                        ok, path = r.generate_acceleration(p_data)
+                        if ok: messagebox.showinfo("Excel Guardado", f"Generado en:\\n{path}")
+                        else: messagebox.showerror("Excel Error", f"Error:\\n{path}")
+                    except Exception as e:
+                        messagebox.showerror("Excel Exception", str(e))
+                        
+                PreviewWindow(self, "Previsualización - Aceleración 0-80 km/h", result['sections'], on_confirm, contexto_gps=result.get('contexto_gps'), context_map=result.get('context_map'), on_excel_callback=on_excel, preview_data=result)
                 return True, "Previsualización abierta"
             else:
                 messagebox.showerror("Error", f"Error en el análisis:\n{result}")

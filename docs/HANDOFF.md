@@ -690,20 +690,42 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - Se mapeó exhaustivamente el paso del dato de `altura` de los pilotos a través de todos los reportes de módulos (`braking_test`, `acceleration_0_80`, `climbing_test`, `recovery_test`, `top_speed_test`).
 - Se reescribió `reporter.py` para imprimir el texto como `Nombre (Peso Kg, Altura cm)` en la cabecera del PDF final.
 
+---
+
+## [2026-03-24] - Módulo de Reportes Excel y Ajuste de Títulos de Mapas
+
+### 🚀 Novedades y Cambios Implementados
+
+1. **Limpieza de Títulos en Mapas (PDF)**
+   - Se iteraron todos los bloques generadores de PDF en `analysis_controller.py` para remover referencias residuales ("Hoja 3: Mapa de Calor", o el nombre de los pilotos en paréntesis).
+   - Ahora, absolutamente todos los bloques de mapas GPS llevan como único título estricto: `"Ubicación de la prueba"`.
+
+2. **Nuevo Sistema de Reportes en Excel (`openpyxl`)**
+   - Instalación e inclusión de `openpyxl` en `requirements.txt`.
+   - Creación de `excel_reporter.py` con la clase `ExcelReporter` configurada para buscar las plantillas en `.../Formatos` y guardar en `.../Resultados`.
+   - Se implementó la lógica de escritura (mapeo de datos y pegado de imágenes) para la plantilla `ft-nm-000-008.xlsx` del test de **Aceleración**.
+
+3. **Interfaz Gráfica (Previsualización)**
+   - Se actualizó `preview_window.py` para inyectar un botón extra: **"Generar Reporte Excel"** (verde oscuro estilo Excel).
+   - Se modificó `analysis_controller.py` para incrustar datos crudos (top 3 eventos, segmentos del mejor evento, e imágenes compiladas) en el `preview_data` exportado hacia la interfaz.
+   - En `modules/acceleration_0_80.py`, se conectó el nuevo callback para accionar generar el Excel y lanzar cuadros de diálogo de éxito o error con la ruta del archivo generado.
+
 ### 📁 Archivos Modificados / Creados
-- `[MODIFICADO]` `data_manager.py`
-- `[MODIFICADO]` `main.py`
-- `[MODIFICADO]` `reporter.py`
+- `[CREADO]` `excel_reporter.py`
 - `[MODIFICADO]` `analysis_controller.py`
-- `[MODIFICADO]` `modules/*.py` (x5)
+- `[MODIFICADO]` `preview_window.py`
+- `[MODIFICADO]` `modules/acceleration_0_80.py`
+- `[MODIFICADO]` `requirements.txt`
 - `[MODIFICADO]` `version.py`
 - `[MODIFICADO]` `docs/HANDOFF.md`
 
-### 🚀 Control de Versiones (v2.6.0)
-- Incremento nominal debido al rediseño topológico de variables transmitidas entre GUI, Lógica y PDF referente a los metadatos de los conductores.
+### 🚀 Control de Versiones (v2.7.0)
+- Salto de versión menor debido a la integración completa del sistema estructural de reportes en Excel (`openpyxl`) y la refactorización estética de los títulos PDF de los mapas.
 
 ### 💻 Comandos Ejecutados
-*(Verificación de sintaxis de Python nativa `py_compile` exitosa tras refactor general de módulos)*
+- `pip install openpyxl`
+- `echo "openpyxl" >> requirements.txt`
 
 ### ⏳ Pendientes
-- Esperar directivas para "Todas las pruebas".
+- Esperar directivas y confirmación sobre "Todas las pruebas".
+- Añadir paulatinamente funciones en `excel_reporter.py` para los otros archivos `ft-nm-000-XX.xlsx` (Frenado, Recuperación, Velocidad Máxima, Ascenso) a medida que el usuario lo indique.

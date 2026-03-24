@@ -4,4 +4,4 @@ matplotlib
 reportlab
 customtkinter
 staticmap
-pillow
+pillowopenpyxl

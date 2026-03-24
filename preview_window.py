@@ -3,7 +3,7 @@ from PIL import Image
 import io
 
 class PreviewWindow(ctk.CTkToplevel):
-    def __init__(self, parent, title_text, sections, on_confirm_callback, contexto_gps=None, context_map=None):
+    def __init__(self, parent, title_text, sections, on_confirm_callback, contexto_gps=None, context_map=None, on_excel_callback=None, preview_data=None):
         """
         sections is a list of dicts:
         [
@@ -25,6 +25,8 @@ class PreviewWindow(ctk.CTkToplevel):
         self.sections_data = sections
         self.contexto_gps = contexto_gps
         self.context_map = context_map
+        self.on_excel_callback = on_excel_callback
+        self.preview_data = preview_data
         
         # Header
         self.header_frame = ctk.CTkFrame(self)
@@ -43,6 +45,10 @@ class PreviewWindow(ctk.CTkToplevel):
         self.footer_frame.pack(fill="x", padx=10, pady=10)
         
         ctk.CTkButton(self.footer_frame, text="Cancelar", fg_color="gray", hover_color="darkgray", command=self.destroy).pack(side="left", padx=20)
+        
+        if self.on_excel_callback and self.preview_data is not None:
+            ctk.CTkButton(self.footer_frame, text="Generar Reporte Excel", fg_color="#107C41", hover_color="#0b5e31", command=self._excel).pack(side="left", padx=20)
+            
         ctk.CTkButton(self.footer_frame, text="Generar Reporte PDF", fg_color="green", hover_color="darkgreen", command=self._confirm).pack(side="right", padx=20)
 
     def _build_sections(self):
@@ -119,3 +125,7 @@ class PreviewWindow(ctk.CTkToplevel):
         self.destroy() # Close preview
         if self.on_confirm_callback:
             self.on_confirm_callback(self.sections_data) # Proceed with the generation 
+            
+    def _excel(self):
+        if self.on_excel_callback and self.preview_data is not None:
+            self.on_excel_callback(self.preview_data)
