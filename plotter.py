@@ -101,9 +101,10 @@ class Plotter:
             label_text = f"D: {metrics['dist_m']:.2f} m\nT: {metrics['time_s']:.2f} s\nA: {metrics['avg_acc']:.2f} m/s²"
             # Position at the end line, mid-height or top
             # We use a bbox for readability
-            y_pos = speed_at_start / 2 # Mid-height of the braking maneuver roughly
-            ax.text(end_time + 0.05, y_pos, label_text, 
+            y_pos = (df['Velocidad_GPS'].max() + speed_at_start) / 2 # Mid-height of the maneuver
+            ax.text(end_time - 0.1, y_pos, label_text, 
                     verticalalignment='center', 
+                    horizontalalignment='right',
                     fontsize=12,
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 

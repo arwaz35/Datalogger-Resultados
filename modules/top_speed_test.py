@@ -99,14 +99,25 @@ class TopSpeedTest(ctk.CTkFrame):
                     preview_data['sections'] = modified_sections
                 success_gen, pdf_path = self.controller.generate_pdf(preview_data)
                 if success_gen:
-                    messagebox.showinfo("Éxito", f"Reporte final (Velocidad Máxima) generado correctamente en:\\n{pdf_path}")
+                    messagebox.showinfo("Éxito", f"Reporte final (Velocidad Máxima) generado correctamente en:\n{pdf_path}")
                 else:
-                    messagebox.showerror("Error", f"Error generando PDF:\\n{pdf_path}")
+                    messagebox.showerror("Error", f"Error generando PDF:\n{pdf_path}")
+                    
+            def on_excel_callback(modified_sections=None):
+                if modified_sections:
+                    preview_data['sections'] = modified_sections
+                from excel_reporter import ExcelReporter
+                reporter = ExcelReporter()
+                success_ex, exc_path = reporter.generate_top_speed(preview_data)
+                if success_ex:
+                    messagebox.showinfo("Éxito", f"Reporte Excel generado en:\n{exc_path}")
+                else:
+                    messagebox.showerror("Error", f"Error generando Excel:\n{exc_path}")
             
             # Launch async to not block UI thread
             import threading
             def show_gui():
-                PreviewWindow(self.winfo_toplevel(), "Reporte de Velocidad Máxima", preview_data['sections'], on_generate, contexto_gps=preview_data.get('contexto_gps'), context_map=preview_data.get('context_map'))
+                PreviewWindow(self.winfo_toplevel(), "Reporte de Velocidad Máxima", preview_data['sections'], on_generate, contexto_gps=preview_data.get('contexto_gps'), context_map=preview_data.get('context_map'), on_excel_callback=on_excel_callback, preview_data=preview_data)
             
             self.after(0, show_gui)
             return True, "Previsualización"

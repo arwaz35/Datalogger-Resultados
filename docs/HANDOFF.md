@@ -708,19 +708,24 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 3. **Interfaz Gráfica (Previsualización)**
    - Se actualizó `preview_window.py` para inyectar un botón extra: **"Generar Reporte Excel"** (verde oscuro estilo Excel).
    - Se modificó `analysis_controller.py` para incrustar datos crudos (top 3 eventos, segmentos del mejor evento, e imágenes compiladas) en el `preview_data` exportado hacia la interfaz.
-   - En `modules/acceleration_0_80.py`, se conectó el nuevo callback para accionar generar el Excel y lanzar cuadros de diálogo de éxito o error con la ruta del archivo generado.
+   - En `modules/acceleration_0_80.py` y `modules/top_speed_test.py`, se conectó el nuevo callback para accionar generar el Excel y lanzar cuadros de diálogo de éxito o error con la ruta del archivo generado.
+
+4. **Integración Top Speed (Velocidad Máxima)**
+   - Se añadió el método `generate_top_speed` en el `excel_reporter.py` compatible con la base `ft-nm-000-007.xlsx`.
+   - Se configuró el Anclaje Absoluto ("Absolute Anchor") nativo de openpyxl (`create_context_map_anchor`) en ambas pruebas para garantizar exactitud de 9.97" en tamaño e offsets exactos de `izquierda: 6.27" y Arriba: 5.69"`.
 
 ### 📁 Archivos Modificados / Creados
 - `[CREADO]` `excel_reporter.py`
 - `[MODIFICADO]` `analysis_controller.py`
 - `[MODIFICADO]` `preview_window.py`
 - `[MODIFICADO]` `modules/acceleration_0_80.py`
+- `[MODIFICADO]` `modules/top_speed_test.py`
 - `[MODIFICADO]` `requirements.txt`
 - `[MODIFICADO]` `version.py`
 - `[MODIFICADO]` `docs/HANDOFF.md`
 
-### 🚀 Control de Versiones (v2.7.0)
-- Salto de versión menor debido a la integración completa del sistema estructural de reportes en Excel (`openpyxl`) y la refactorización estética de los títulos PDF de los mapas.
+### 🚀 Control de Versiones (v2.8.0)
+- Salto de versión menor debido a la integración completa del sistema estructural de reportes en Excel (`openpyxl`), refactorización de Títulos PDF y el módulo Excel para **Velocidad Máxima** (Top Speed).
 
 ### 💻 Comandos Ejecutados
 - `pip install openpyxl`
@@ -728,4 +733,4 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### ⏳ Pendientes
 - Esperar directivas y confirmación sobre "Todas las pruebas".
-- Añadir paulatinamente funciones en `excel_reporter.py` para los otros archivos `ft-nm-000-XX.xlsx` (Frenado, Recuperación, Velocidad Máxima, Ascenso) a medida que el usuario lo indique.
+- Añadir paulatinamente funciones en `excel_reporter.py` para los otros archivos `ft-nm-000-XX.xlsx` (Frenado, Recuperación, Ascenso) a medida que el usuario lo indique.

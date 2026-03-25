@@ -945,6 +945,7 @@ class AnalysisController:
             # Sort by best (Highest V. Maxima)
             valid_events.sort(key=lambda x: x['metrics']['v_max'], reverse=True)
             best_event = valid_events[0]
+            top_3_events = valid_events[:3]
             
             # Export CSV for the best event
             lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
@@ -958,6 +959,9 @@ class AnalysisController:
             
             # --- PREVIEW SECTIONS PREPARATION ---
             sections = []
+            
+            # Comparative Graph for Top 3 Events
+            img_buf = Plotter.plot_speed_vs_time(top_3_events, "Comparativa Velocidad - Mejores Eventos", figsize=(15, 8))
             
             # Standard Metrics Table
             m = best_event['metrics']
@@ -1023,7 +1027,13 @@ class AnalysisController:
                 "env_conditions": env_conditions,
                 "sections": sections,
                 "contexto_gps": contexto_gps,
-                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
+                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main,
+                "top_events": top_3_events,
+                "img_combined": img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf,
+                "img_detail_gps": img_gps.getvalue() if (img_gps and hasattr(img_gps, 'getvalue')) else img_gps,
+                "img_detail_v": img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v,
+                "img_detail_a": img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc,
+                "img_detail_rpm": img_rpm.getvalue() if (img_rpm and hasattr(img_rpm, 'getvalue')) else img_rpm
             }
             
             return True, preview_data

@@ -147,3 +147,131 @@ class ExcelReporter:
             
         except Exception as e:
             return False, str(e)
+
+    def generate_top_speed(self, preview_data):
+        try:
+            template_path = os.path.join(self.templates_dir, "ft-nm-000-007.xlsx")
+            if not os.path.exists(template_path):
+                return False, f"Plantilla no encontrada: {template_path}"
+                
+            wb = openpyxl.load_workbook(template_path)
+            ws = wb.active
+            
+            # --- MAPPING DATA ---
+            moto = preview_data.get('moto_info', {})
+            env_cond = preview_data.get('env_conditions', {})
+            lugar = env_cond.get('lugar', {}) if env_cond else {}
+            inputs = preview_data.get('inputs', [{}])[0]
+            
+            # Header info
+            ws['D7'] = pd.Timestamp.now().strftime("%d/%m/%Y")
+            ws['D8'] = moto.get('Placa', '')
+            ws['D9'] = moto.get('Peso (Kg)', '')
+            
+            ws['G7'] = moto.get('Nombre Comercial', '')
+            ws['G8'] = moto.get('Chasis', '')
+            ws['G9'] = moto.get('Potencia (Hp)', '')
+            
+            ws['J7'] = moto.get('Código Modelo', '')
+            ws['J8'] = moto.get('Motor', '')
+            ws['J9'] = moto.get('Torque (Nm)', '')
+            
+            ws['A12'] = preview_data.get('comments', '')
+            
+            # Pilot Info
+            ws['C18'] = inputs.get('pilot', '')
+            ws['C19'] = inputs.get('weight', '')
+            ws['C20'] = inputs.get('altura', '')
+            
+            # Env Cond
+            ws['H18'] = lugar.get('Nombre', '')
+            ctx = preview_data.get('contexto_gps', {})
+            
+            if ctx:
+                ws['H19'] = ctx.get('altitud_promedio_msnm', lugar.get('Altitud (m)', ''))
+                ws['H20'] = f"{ctx.get('latitud_inicial', '')}, {ctx.get('longitud_inicial', '')}"
+                ws['H21'] = ctx.get('google_maps_link', '')
+            else:
+                ws['H19'] = lugar.get('Altitud (m)', '')
+            
+            ws['K18'] = env_cond.get('temp_amb', '') if env_cond else ''
+            ws['K19'] = env_cond.get('humidity', '') if env_cond else ''
+            ws['K20'] = env_cond.get('temp_ground', '') if env_cond else ''
+            
+            # --- RESULTS (Tables) ---
+            top_events = preview_data.get('top_events', [])
+            for i, ev in enumerate(top_events):
+                row = 52 + i
+                m = ev['metrics']
+                ws[f'C{row}'] = f"Evento {ev['id']}"
+                ws[f'F{row}'] = m.get('v_start', 0.0)
+                ws[f'G{row}'] = m.get('v_final', 0.0)
+                ws[f'H{row}'] = m.get('time_s', 0.0)
+                ws[f'I{row}'] = m.get('dist_m', 0.0)
+                ws[f'J{row}'] = m.get('avg_acc', 0.0)
+                ws[f'K{row}'] = m.get('top_rpm', 0.0)
+                
+            # Best event specific table
+            if top_events:
+                best = top_events[0]['metrics']
+                ws['D90'] = best.get('v_max', 0.0)
+                ws['I90'] = best.get('avg_acc', 0.0)
+                ws['J90'] = best.get('top_rpm', 0.0)
+                
+            # --- IMAGES ---
+            def insert_img(bytes_data, cell_or_anchor_func):
+                if bytes_data:
+                    if isinstance(bytes_data, dict): bytes_data = bytes_data.get('bytes')
+                    try:
+                        pil_img = Image.open(io.BytesIO(bytes_data))
+                        img_byte_arr = io.BytesIO()
+                        pil_img.save(img_byte_arr, format='PNG')
+                        img_byte_arr.seek(0)
+                        
+                        xl_img = OpenpyxlImage(img_byte_arr)
+                        
+                        if callable(cell_or_anchor_func):
+                            xl_img.anchor = cell_or_anchor_func(pil_img.size)
+                            ws.add_image(xl_img)
+                        else:
+                            ws.add_image(xl_img, cell_or_anchor_func)
+                    except Exception as e:
+                        print(f"Error inserting image: {e}")
+                        
+            def context_map_anchor(original_size):
+                from openpyxl.drawing.spreadsheet_drawing import AbsoluteAnchor
+                from openpyxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
+                
+                orig_w, orig_h = original_size
+                width_inch = 9.97
+                height_inch = width_inch * (orig_h / orig_w)
+                
+                emu_per_inch = 914400
+                left_emu = int(6.27 * emu_per_inch)
+                top_emu = int(5.69 * emu_per_inch)
+                w_emu = int(width_inch * emu_per_inch)
+                h_emu = int(height_inch * emu_per_inch)
+                
+                pos = XDRPoint2D(x=left_emu, y=top_emu)
+                ext = XDRPositiveSize2D(cx=w_emu, cy=h_emu)
+                return AbsoluteAnchor(pos=pos, ext=ext)
+            
+            insert_img(preview_data.get('context_map'), context_map_anchor)
+            insert_img(preview_data.get('img_combined'), 'C56')
+            insert_img(preview_data.get('img_detail_gps'), 'B92')
+            insert_img(preview_data.get('img_detail_v'), 'B132')
+            insert_img(preview_data.get('img_detail_a'), 'B162')
+            insert_img(preview_data.get('img_detail_rpm'), 'B176')
+
+            # --- SAVE ---
+            def clean(s): return "".join([c for c in str(s) if c.isalnum() or c in (' ', '-', '_')]).strip()
+            moto_str = clean(moto.get('Nombre Comercial', 'Moto'))
+            fecha_str = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"VelMaxima_{moto_str}_{fecha_str}.xlsx"
+            filepath = os.path.join(self.output_dir, filename)
+            
+            wb.save(filepath)
+            return True, filepath
+            
+        except Exception as e:
+            return False, str(e)
