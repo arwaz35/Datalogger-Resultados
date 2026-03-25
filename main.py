@@ -33,6 +33,12 @@ class App(ctk.CTk):
         self.moto_values_map = []
         self.lugar_values_map = []
         
+        # Forzar ventana al frente (especialmente útil en macOS)
+        self.lift()
+        self.attributes('-topmost', True)
+        self.after(100, lambda: self.attributes('-topmost', False))
+        self.after(200, self.focus_force)
+        
         self.show_main_menu()
         
     def clear_window(self):
