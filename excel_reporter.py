@@ -88,7 +88,7 @@ class ExcelReporter:
                 ws[f'I{row}'] = seg[4] # RPM
                 
             # --- IMAGES ---
-            def insert_img(bytes_data, cell):
+            def insert_img(bytes_data, cell_or_anchor_func):
                 if bytes_data:
                     if isinstance(bytes_data, dict): bytes_data = bytes_data.get('bytes')
                     try:
@@ -99,15 +99,35 @@ class ExcelReporter:
                         img_byte_arr.seek(0)
                         
                         xl_img = OpenpyxlImage(img_byte_arr)
-                        # We might need to scale image to fit cells nicely. 
-                        # User wants them embedded in specific cells.
-                        # xl_img.width = 500
-                        # xl_img.height = 300
-                        ws.add_image(xl_img, cell)
+                        
+                        if callable(cell_or_anchor_func):
+                            # Calculate dimensions based on original image
+                            xl_img.anchor = cell_or_anchor_func(pil_img.size)
+                            ws.add_image(xl_img)
+                        else:
+                            ws.add_image(xl_img, cell_or_anchor_func)
                     except Exception as e:
-                        print(f"Error inserting image at {cell}: {e}")
+                        print(f"Error inserting image: {e}")
+                        
+            def context_map_anchor(original_size):
+                from openpyxl.drawing.spreadsheet_drawing import AbsoluteAnchor
+                from openpyxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
+                
+                orig_w, orig_h = original_size
+                width_inch = 9.97
+                height_inch = width_inch * (orig_h / orig_w)
+                
+                emu_per_inch = 914400
+                left_emu = int(6.27 * emu_per_inch)
+                top_emu = int(5.69 * emu_per_inch)
+                w_emu = int(width_inch * emu_per_inch)
+                h_emu = int(height_inch * emu_per_inch)
+                
+                pos = XDRPoint2D(x=left_emu, y=top_emu)
+                ext = XDRPositiveSize2D(cx=w_emu, cy=h_emu)
+                return AbsoluteAnchor(pos=pos, ext=ext)
             
-            insert_img(preview_data.get('context_map'), 'G23')
+            insert_img(preview_data.get('context_map'), context_map_anchor)
             insert_img(preview_data.get('img_combined'), 'B56')
             insert_img(preview_data.get('img_detail_gps'), 'B95')
             insert_img(preview_data.get('img_detail_v'), 'B135')
