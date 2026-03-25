@@ -154,7 +154,7 @@ class App(ctk.CTk):
         self.tests_map = {
             "Frenado": BrakingTest,
             "Ascenso": ClimbingTest,
-            "Aceleración 0-80": Acceleration080Test,
+            "Aceleración": Acceleration080Test,
             "Recuperación": RecoveryTest,
             "Velocidad Máxima": TopSpeedTest
         }
