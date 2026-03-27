@@ -525,14 +525,16 @@ class AnalysisController:
             # --- BUILD RECOVERY SECTIONS & DATA ---
             if recovery_results:
                 all_rec_tops = []
+                best_of_each = []
                 for g in [30, 40, 50]:
                     if g in recovery_results:
                         all_rec_tops.extend(recovery_results[g]['top_3'])
+                        best_of_each.append(recovery_results[g]['best'])
                 
                 img_combined_rec = Plotter.plot_speed_vs_time(all_rec_tops, "Recuperación - Mejores Eventos", figsize=(15, 8))
                 
                 table_r_tops = [["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]]
-                for top_ev in all_rec_tops:
+                for top_ev in best_of_each:
                     m = top_ev['metrics']
                     table_r_tops.append([
                         f"{m['v_start']:.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}",
@@ -547,7 +549,7 @@ class AnalysisController:
                 
                 preview_data["recovery_data"] = {
                     "summary_img": img_combined_rec.getvalue() if hasattr(img_combined_rec, 'getvalue') else img_combined_rec,
-                    "summary_events": all_rec_tops,
+                    "summary_events": best_of_each,
                     "bands": {}
                 }
                 
