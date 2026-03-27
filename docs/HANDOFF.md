@@ -718,14 +718,18 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 - `[CREADO]` `excel_reporter.py`
 - `[MODIFICADO]` `analysis_controller.py`
 - `[MODIFICADO]` `preview_window.py`
-- `[MODIFICADO]` `modules/acceleration_0_80.py`
+- `[ELIMINADO]` `modules/acceleration_0_80.py`
+- `[ELIMINADO]` `modules/recovery_test.py`
+- `[CREADO]` `modules/accel_recovery_test.py`
 - `[MODIFICADO]` `modules/top_speed_test.py`
 - `[MODIFICADO]` `requirements.txt`
 - `[MODIFICADO]` `version.py`
 - `[MODIFICADO]` `docs/HANDOFF.md`
 
-### 🚀 Control de Versiones (v2.8.0)
-- Salto de versión menor debido a la integración completa del sistema estructural de reportes en Excel (`openpyxl`), refactorización de Títulos PDF y el módulo Excel para **Velocidad Máxima** (Top Speed).
+### 🚀 Control de Versiones (v2.9.0)
+- **v2.9.0:** Fusión estructural del módulo de **Aceleración (0-80)** y **Recuperación (30-80, 40-80, 50-80)** en un solo entorno de previsualización integral y una sola plantilla Excel. Tolerancia a fallos para gráficas inexistentes. Además se aplicó el formato europeo (coma en lugar de punto para decimales) en los excels.
+- **v2.8.0:** Integración completa de openpyxl y formato para Velocidad Máxima.
+- **v2.7.0:** Refactorización estética de los títulos PDF de los mapas.
 
 ### 💻 Comandos Ejecutados
 - `pip install openpyxl`
@@ -733,4 +737,4 @@ El flujo principal consiste en que el usuario carga archivos CSV generados por e
 
 ### ⏳ Pendientes
 - Esperar directivas y confirmación sobre "Todas las pruebas".
-- Añadir paulatinamente funciones en `excel_reporter.py` para los otros archivos `ft-nm-000-XX.xlsx` (Frenado, Recuperación, Ascenso) a medida que el usuario lo indique.
+- Añadir paulatinamente funciones en `excel_reporter.py` para los otros archivos `ft-nm-000-XX.xlsx` (Frenado, Ascenso) a medida que el usuario lo indique.

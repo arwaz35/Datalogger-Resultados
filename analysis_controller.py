@@ -356,183 +356,240 @@ class AnalysisController:
 
         return success, filepath
 
-    def evaluate_acceleration_0_80(self, inputs, moto_info, comments, env_conditions=None):
-        """
-        Processes Acceleration 0-80 km/h test.
-        inputs: List of dicts (usually single file)
-        Returns: success_bool, data_to_preview_or_error_msg
-        """
-        from analyzer import extract_acceleration_events, refine_acceleration_start, calculate_acceleration_metrics, export_event_to_csv
-        
-        all_events = []
-        
-        # 1. Parse and Extract
-        for inp in inputs:
-            df = parse_csv(inp['filepath'])
+
+    def evaluate_accel_recovery(self, inputs, moto_info, comments, env_conditions=None):
+        try:
+            from analyzer import parse_csv, convert_units, extract_acceleration_events, calculate_acceleration_metrics, get_gps_context
+            from analyzer import extract_recovery_events, export_event_to_csv, calculate_recovery_metrics, refine_acceleration_start
+            from plotter import Plotter
+            
+            data = inputs[0]
+            filepath = data['filepath']
+            pilot = data['pilot']
+            weight = data['weight']
+            
+            df = parse_csv(filepath)
             df = convert_units(df)
             
-            # Extract candidates (0-80)
-            raw_events = extract_acceleration_events(df, target_speed=80)
+            lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
             
-            for i, evt_df in enumerate(raw_events):
-                # Refine start
-                start_idx = refine_acceleration_start(evt_df)
-                
-                # Calculate metrics (0-80)
-                metrics = calculate_acceleration_metrics(evt_df, start_idx, target_speed=80)
-                
-                if metrics:
-                    # Create Event Object
-                    event_obj = {
-                        'df': evt_df,
-                        'metrics': metrics,
-                        'pilot': inp['pilot'],
-                        'weight': inp['weight'],
-                        'id': i+1
-                    }
-                    all_events.append(event_obj)
+            # --- 1. ACCELERATION 0-80 ---
+            raw_accel = extract_acceleration_events(df, target_speed=80)
+            valid_accel = []
+            for i, evt_df in enumerate(raw_accel):
+                s_idx = refine_acceleration_start(evt_df)
+                m = calculate_acceleration_metrics(evt_df, s_idx, target_speed=80)
+                if m:
+                    v_s = evt_df.loc[s_idx, 'Velocidad_GPS']
+                    if v_s < 5.0:
+                        m['start_idx'] = s_idx
+                        valid_accel.append({'df': evt_df, 'metrics': m, 'pilot': pilot, 'weight': weight, 'id': len(valid_accel)+1})
                     
-                    # Export individual CSV
-                    lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
-                    export_event_to_csv(event_obj, self.output_dir, moto_info, lugar_name, test_name="Aceleracion")
-        
-        if not all_events:
-            return False, "No se encontraron eventos válidos de Aceleración 0-80 km/h."
-            
-        # 2. Sort by Best (Minimum Distance)
-        # Requirement: "el mejor evento se debe evaluar la menor distancia"
-        all_events.sort(key=lambda x: x['metrics']['dist_m'])
-        
-        # Select top 3
-        top_3_events = all_events[:3]
-        best_event = all_events[0]
-        
-        # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
-        from analyzer import get_gps_context
-        contexto_gps = get_gps_context(best_event['df'])
-        dist_total = contexto_gps.get('distancia_m', 0.0)
-        img_buf_gps_main = Plotter.plot_gps_route_simple(best_event['df'], title="Trazado de la Pista", distance_m=dist_total)
-        
-        # --- PREVIEW SECTIONS PREPARATION ---
-        sections = []
-        
-        # Summary 3 Best Events (Hoja 2)
-        img_buf = Plotter.plot_acceleration_comparison(top_3_events, "Comparativa: Velocidad vs Tiempo (Top 3)", figsize=(15, 8))
-        
-        table_data_summary = [['Evento', 'V. Inicial (km/h)', 'V. Final (km/h)', 'Tiempo (s)', 'Distancia (m)', 'Acel Prom (m/s²)', 'Top RPM']]
-        for i, ev in enumerate(top_3_events):
-            m = ev['metrics']
-            row = [
-                f"Evento {ev['id']} ({ev['pilot']})",
-                f"{m.get('v_start', 0.0):.2f}",
-                f"{m.get('v_final', 80.0):.2f}",
-                f"{m['time_s']:.2f}",
-                f"{m['dist_m']:.2f}",
-                f"{m['avg_acc']:.2f}",
-                f"{int(m.get('top_rpm', 0))}"
-            ]
-            table_data_summary.append(row)
-            
-        sections.append({
-            "title": "Aceleración 0-80 km/h - Resumen 3 Mejores",
-            "images": [{'bytes': img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf}],
-            "table_data": table_data_summary
-        })
-        
-        # Best Event Details Mapa (Hoja 3)
-        img_detail_gps = Plotter.plot_gps_heatmap(best_event, "Ruta GPS (Mejor Evento)")
-        if img_detail_gps:
-            sections.append({
-                "title": "Ubicación de la prueba",
-                "images": [{'bytes': img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps}],
-                "table_data": None
-            })
-            
-        # Best Event Details Gráficas (Hoja 4)
-        img_detail_v = Plotter.plot_acceleration_detailed(best_event, "Análisis Detallado: Velocidad vs Tiempo")
-        img_detail_a = Plotter.plot_accel_vs_time(best_event, "Aceleración Promedio vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
-        img_detail_rpm = Plotter.plot_rpm_vs_time(best_event, "RPM vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
-        
-        table_segments = [
-            ["Tramo (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]
-        ]
-        
-        df = best_event['df']
-        start_idx = best_event['metrics']['start_idx']
-        try:
-            start_pos = df.index.get_loc(start_idx)
-        except:
-            start_pos = 0
-            
-        sub = df.iloc[start_pos:]
-        
-        benchmarks = [0, 20, 40, 60, 80]
-        for idx_b in range(len(benchmarks)-1):
-            v1 = benchmarks[idx_b]
-            v2 = benchmarks[idx_b+1]
-            
-            if v1 == 0:
-                s_idx = sub.index[0]
+            if valid_accel:
+                valid_accel.sort(key=lambda x: x['metrics']['time_s'])
+                best_accel = valid_accel[0]
+                top_3_accel = valid_accel[:3]
+                export_event_to_csv(best_accel, self.output_dir, moto_info, lugar_name, test_name="Accel_0_80")
             else:
-                c1 = sub[sub['Velocidad_GPS'] >= v1]
-                if c1.empty: continue
-                s_idx = c1.index[0]
-                
-            sub2 = sub.loc[s_idx:]
-            c2 = sub2[sub2['Velocidad_GPS'] >= v2]
-            if c2.empty: continue
-            e_idx = c2.index[0]
-            
-            seg_slice = df.loc[s_idx:e_idx]
-            t_seg = (df.index.get_loc(e_idx) - df.index.get_loc(s_idx)) * 0.1
-            d_start = df.loc[s_idx, 'Distancia'] if 'Distancia' in df else 0
-            d_end = df.loc[e_idx, 'Distancia'] if 'Distancia' in df else 0
-            d_seg = max(0, d_end - d_start)
-            a_seg = seg_slice['Accel_X_ms2'].mean() if 'Accel_X_ms2' in seg_slice else 0
-            rpm_seg = seg_slice['RPM'].max() if 'RPM' in seg_slice else 0
-            
-            table_segments.append([
-                f"{v1}-{v2}", f"{t_seg:.2f}", f"{d_seg:.2f}", f"{a_seg:.2f}", f"{int(rpm_seg)}"
-            ])
-            
-        images_detalle = []
-        images_detalle.append({'bytes': img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v})
-        images_detalle.append({'bytes': img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm, 'space_after': 25})
-        images_detalle.append({'bytes': img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a, 'space_after': 30})
-        
-        sections.append({
-            "title": f"Hoja 4: Gráficas Mejor Evento - Evento {best_event['id']} ({best_event['pilot']})",
-            "images": images_detalle,
-            "table_data": table_segments
-        })
-        
-        # Se removieron los gráficos de tramos detallados a petición del usuario.
-        
-        preview_data = {
-            "type": "acceleration",
-            "moto_info": moto_info,
-            "inputs": inputs,
-            "comments": comments,
-            "env_conditions": env_conditions,
-            "sections": sections,
-            "contexto_gps": contexto_gps,
-            "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main,
-            
-            # Additional elements for Excel Generation
-            "top_3_events": top_3_events,
-            "best_event_segments": table_segments[1:], # skip header
-            "img_combined": img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf,
-            "img_detail_v": img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
-            "img_detail_a": img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a,
-            "img_detail_rpm": img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm,
-            "img_detail_gps": img_detail_gps.getvalue() if (img_detail_gps and hasattr(img_detail_gps, 'getvalue')) else img_detail_gps
-        }
-        
-        return True, preview_data
+                best_accel, top_3_accel = None, []
 
-    # Use the general generate_pdf which handles all basic preview types that are unified
-    # But acceleration uses specific sub-headers and formats in its native execution. 
-    # Since generate_pdf uses the sections generically (just dumping images and tables), we can reuse it!
+            # --- 2. RECOVERY 30, 40, 50 ---
+            raw_rec = extract_recovery_events(df, target_speed=80)
+            valid_rec = []
+            for i, evt_df in enumerate(raw_rec):
+                m = calculate_recovery_metrics(evt_df)
+                if m:
+                    valid_rec.append({'df': evt_df, 'metrics': m, 'group': evt_df.attrs.get('group'), 'pilot': pilot, 'weight': weight, 'id': i+1})
+            
+            recovery_results = {}
+            if valid_rec:
+                # Group by speed
+                groups = {30: [], 40: [], 50: []}
+                for v in valid_rec:
+                    g = v['group']
+                    if g in groups:
+                        groups[g].append(v)
+                
+                for g, evs in groups.items():
+                    if not evs: continue
+                    evs.sort(key=lambda x: x['metrics']['time_s'])
+                    export_event_to_csv(evs[0], self.output_dir, moto_info, lugar_name, test_name=f"Rec_{g}_80")
+                    recovery_results[g] = {'best': evs[0], 'top_3': evs[:3]}
+                    
+            if not best_accel and not recovery_results:
+                return False, "No se encontraron eventos válidos de Aceleración ni Recuperación en el archivo."
+
+            # --- PREVIEW DATA STRUCTURE ---
+            contexto_gps = get_gps_context(df)
+            
+            # Context Map
+            dist_total = contexto_gps.get('distancia_m', 0.0)
+            if best_accel:
+                img_buf_gps_main = Plotter.plot_gps_route_simple(best_accel['df'], title="Trazado de la Pista (Aceleración)", distance_m=dist_total)
+            elif recovery_results:
+                first_rec = list(recovery_results.values())[0]['best']
+                img_buf_gps_main = Plotter.plot_gps_route_simple(first_rec['df'], title="Trazado de la Pista (Recuperación)", distance_m=dist_total)
+            else:
+                img_buf_gps_main = None
+
+            sections = []
+            preview_data = {
+                "type": "accel_recovery",
+                "moto_info": moto_info,
+                "inputs": inputs,
+                "comments": comments,
+                "env_conditions": env_conditions,
+                "sections": sections,
+                "contexto_gps": contexto_gps,
+                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main,
+                "accel_data": None,
+                "recovery_data": None
+            }
+            
+            # --- BUILD ACCELERATION SECTIONS & DATA ---
+            if best_accel:
+                img_combined = Plotter.plot_speed_vs_time(top_3_accel, "Aceleración 0-80 - Mejores Eventos", figsize=(15, 8))
+                img_detail_v = Plotter.plot_acceleration_detailed(best_accel, "Velocidad vs Tiempo")
+                img_detail_a = Plotter.plot_accel_vs_time(best_accel, "Aceleración Promedio vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
+                img_detail_rpm = None
+                if 'RPM' in best_accel['df'].columns:
+                    img_detail_rpm = Plotter.plot_rpm_vs_time(best_accel, "RPM vs Tiempo", benchmarks=[0, 20, 40, 60, 80])
+                img_detail_gps = Plotter.plot_gps_heatmap(best_accel, "Ubicación de la prueba")
+                
+                # Segment Logic
+                seg_list = []
+                be_df = best_accel['df']
+                b_idx = best_accel['metrics']['start_idx']
+                try: spos = be_df.index.get_loc(b_idx)
+                except: spos = 0
+                sub = be_df.iloc[spos:]
+                
+                benchmarks = [0, 20, 40, 60, 80]
+                for idx_b in range(len(benchmarks)-1):
+                    v1 = benchmarks[idx_b]
+                    v2 = benchmarks[idx_b+1]
+                    if v1 == 0: s_idx = sub.index[0]
+                    else:
+                        c1 = sub[sub['Velocidad_GPS'] >= v1]
+                        if c1.empty: continue
+                        s_idx = c1.index[0]
+                    
+                    sub2 = sub.loc[s_idx:]
+                    c2 = sub2[sub2['Velocidad_GPS'] >= v2]
+                    if c2.empty: continue
+                    e_idx = c2.index[0]
+                    
+                    seg_slice = be_df.loc[s_idx:e_idx]
+                    t_seg = (be_df.index.get_loc(e_idx) - be_df.index.get_loc(s_idx)) * 0.1
+                    d_seg = max(0, (be_df.loc[e_idx, 'Distancia'] if 'Distancia' in be_df else 0) - (be_df.loc[s_idx, 'Distancia'] if 'Distancia' in be_df else 0))
+                    a_seg = seg_slice['Accel_X_ms2'].mean() if 'Accel_X_ms2' in seg_slice else 0
+                    rpm_seg = seg_slice['RPM'].max() if 'RPM' in seg_slice else 0
+                    
+                    seg_list.append([f"{v1}-{v2}", f"{t_seg:.2f}", f"{d_seg:.2f}", f"{a_seg:.2f}", f"{int(rpm_seg)}"])
+                
+                # Also overall event summary
+                val_t = best_accel['metrics']['time_s']
+                val_d = best_accel['metrics']['dist_m']
+                val_a = best_accel['metrics']['avg_acc']
+                val_rpm = best_accel['metrics']['top_rpm']
+                seg_list.append(["0-80", f"{val_t:.2f}", f"{val_d:.2f}", f"{val_a:.2f}", f"{int(val_rpm)}"])
+                
+                sections.append({
+                    "title": f"Aceleración 0-80 km/h - Resumen",
+                    "images": [{'bytes': img_combined.getvalue() if hasattr(img_combined, 'getvalue') else img_combined}],
+                    "table_data": None
+                })
+                
+                images_detalle = []
+                images_detalle.append({'bytes': img_detail_gps.getvalue() if hasattr(img_detail_gps, 'getvalue') else img_detail_gps})
+                images_detalle.append({'bytes': img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v})
+                if img_detail_rpm: images_detalle.append({'bytes': img_detail_rpm.getvalue() if hasattr(img_detail_rpm, 'getvalue') else img_detail_rpm, 'space_after': 25})
+                images_detalle.append({'bytes': img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a, 'space_after': 30})
+                
+                sections.append({
+                    "title": f"Aceleración - Análisis Evento {best_accel['id']} ({best_accel['pilot']})",
+                    "images": images_detalle,
+                    "table_data": [["Tramo (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]] + seg_list
+                })
+                
+                preview_data["accel_data"] = {
+                    "top_3_events": top_3_accel,
+                    "segments": seg_list,
+                    "img_combined": img_combined.getvalue() if hasattr(img_combined, 'getvalue') else img_combined,
+                    "img_detail_v": img_detail_v.getvalue() if hasattr(img_detail_v, 'getvalue') else img_detail_v,
+                    "img_detail_a": img_detail_a.getvalue() if hasattr(img_detail_a, 'getvalue') else img_detail_a,
+                    "img_detail_rpm": img_detail_rpm.getvalue() if (img_detail_rpm and hasattr(img_detail_rpm, 'getvalue')) else img_detail_rpm,
+                    "img_detail_gps": img_detail_gps.getvalue() if (img_detail_gps and hasattr(img_detail_gps, 'getvalue')) else img_detail_gps
+                }
+
+            # --- BUILD RECOVERY SECTIONS & DATA ---
+            if recovery_results:
+                all_rec_tops = []
+                for g in [30, 40, 50]:
+                    if g in recovery_results:
+                        all_rec_tops.extend(recovery_results[g]['top_3'])
+                
+                img_combined_rec = Plotter.plot_speed_vs_time(all_rec_tops, "Recuperación - Mejores Eventos", figsize=(15, 8))
+                
+                table_r_tops = [["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]]
+                for top_ev in all_rec_tops:
+                    m = top_ev['metrics']
+                    table_r_tops.append([
+                        f"{m['v_start']:.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}",
+                        f"{m['dist_m']:.2f}", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"
+                    ])
+
+                sections.append({
+                    "title": "Recuperación - Resumen Global",
+                    "images": [{'bytes': img_combined_rec.getvalue() if hasattr(img_combined_rec, 'getvalue') else img_combined_rec}],
+                    "table_data": table_r_tops
+                })
+                
+                preview_data["recovery_data"] = {
+                    "summary_img": img_combined_rec.getvalue() if hasattr(img_combined_rec, 'getvalue') else img_combined_rec,
+                    "summary_events": all_rec_tops,
+                    "bands": {}
+                }
+                
+                for g in [30, 40, 50]:
+                    if g in recovery_results:
+                        b = recovery_results[g]['best']
+                        img_v = Plotter.plot_speed_vs_time([b], f"Velocidad vs Tiempo ({g}-80)")
+                        img_a = Plotter.plot_accel_vs_time(b, f"Aceleración vs Tiempo ({g}-80)")
+                        img_rpm = Plotter.plot_rpm_vs_time(b, f"RPM vs Tiempo ({g}-80)") if 'RPM' in b['df'].columns else None
+                        img_gps = Plotter.plot_gps_heatmap(b, "Ubicación de la prueba")
+                        
+                        m = b['metrics']
+                        tab_b = [["V. Inicial", "V. Final", "Tiempo", "Distancia", "Acel Prom", "Top RPM"],
+                                 [f"{m['v_start']:.2f}", f"{m['v_final']:.2f}", f"{m['time_s']:.2f}",
+                                  f"{m['dist_m']:.2f}", f"{m['avg_acc']:.2f}", f"{int(m['top_rpm'])}"]]
+                        
+                        imgs = []
+                        if img_gps: imgs.append({'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps})
+                        imgs.append({'bytes': img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v})
+                        if img_rpm: imgs.append({'bytes': img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm, 'space_after': 25})
+                        imgs.append({'bytes': img_a.getvalue() if hasattr(img_a, 'getvalue') else img_a, 'space_after': 30})
+                        
+                        sections.append({
+                            "title": f"Recuperación {g}-80 km/h - Mejor Evento",
+                            "images": imgs,
+                            "table_data": tab_b
+                        })
+                        
+                        preview_data["recovery_data"]["bands"][g] = {
+                            "best_event": b,
+                            "img_v": img_v.getvalue() if hasattr(img_v, 'getvalue') else img_v,
+                            "img_a": img_a.getvalue() if hasattr(img_a, 'getvalue') else img_a,
+                            "img_rpm": img_rpm.getvalue() if (img_rpm and hasattr(img_rpm, 'getvalue')) else img_rpm,
+                            "img_gps": img_gps.getvalue() if (img_gps and hasattr(img_gps, 'getvalue')) else img_gps
+                        }
+                        
+            return True, preview_data
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return False, f"Error evaluando accel/recovery: {str(e)}"
 
     def evaluate_climbing(self, solo_data, passenger_data, moto_info, comments, env_conditions=None):
         """
@@ -720,192 +777,6 @@ class AnalysisController:
         }
         
         return True, preview_data
-
-    def evaluate_recovery(self, data, moto_data, comments, env_conditions):
-        """
-        Process Recovery Test (Single File).
-        Returns: success_bool, data_to_preview_or_error_msg
-        """
-        try:
-            filepath = data['filepath']
-            pilot = data['pilot']
-            weight = data['weight']
-            
-            # Parse
-            df = parse_csv(filepath)
-            df = convert_units(df)
-            
-            # Extract
-            raw_events = extract_recovery_events(df, target_speed=80)
-            
-            if not raw_events:
-                return False, "No se encontraron eventos de recuperación válidos (Pulsador=100 -> 80km/h)."
-                
-            # Metrics & Grouping
-            grouped_events = {} # {30: [metrics, ...], 40: ...}
-            
-            for evt_df in raw_events:
-                m = calculate_recovery_metrics(evt_df)
-                if m:
-                    g = m['group']
-                    if g not in grouped_events: grouped_events[g] = []
-                    
-                    # Add df to metrics for easy access
-                    m['df'] = evt_df
-                    grouped_events[g].append(m)
-            
-            if not grouped_events:
-                return False, "No se pudieron calcular métricas válidas."
-                
-            # Select Best per Group (Min Distance)
-            best_events = {}
-            for g, events in grouped_events.items():
-                # Sort by dist_m
-                sorted_events = sorted(events, key=lambda x: x['dist_m'])
-                best_events[g] = sorted_events[0]
-                
-            # Export CSV for the best events (like other modules do)
-            from analyzer import export_event_to_csv
-            lugar_name = env_conditions.get('lugar', {}).get('Nombre', 'SinLugar') if env_conditions else 'SinLugar'
-            
-            for g, be in best_events.items():
-                # Construct event object for CSV export
-                valid_evt = {
-                    'df': be['df'],
-                    'metrics': {
-                        'start_idx': be['start_idx'],
-                        'end_idx': be['end_idx'],
-                        'time_s': be['time_s'],
-                        'dist_m': be['dist_m'],
-                        'avg_acc': be['avg_acc']
-                    },
-                    'pilot': pilot,
-                    'weight': weight
-                }
-                export_event_to_csv(valid_evt, self.output_dir, moto_data, lugar_name, test_name="Recuperacion")
-                
-            # --- EXTRACCIÓN DE CONTEXTO GLOBAL ---
-            from analyzer import get_gps_context
-            contexto_gps = {}
-            img_buf_gps_main = None
-            
-            # Reconstruct into standard format for plotter
-            plot_input = []
-            sorted_groups = sorted(best_events.keys())
-            for g in sorted_groups:
-                be = best_events[g]
-                valid_evt = {
-                    'df': be['df'],
-                    'metrics': {
-                        'start_idx': be['start_idx'],
-                        'end_idx': be['end_idx'],
-                        'time_s': be['time_s'],
-                        'dist_m': be['dist_m'],
-                        'avg_acc': be['avg_acc']
-                    },
-                    'pilot': pilot,
-                    'file_type': f"Start {g}km/h"
-                }
-                plot_input.append(valid_evt)
-                
-            if plot_input:
-                abs_best = sorted(plot_input, key=lambda x: x['metrics']['dist_m'])[0]
-                contexto_gps = get_gps_context(abs_best['df'])
-                dist_total = contexto_gps.get('distancia_m', 0.0)
-                img_buf_gps_main = Plotter.plot_gps_route_simple(abs_best['df'], title="Trazado de la Pista", distance_m=dist_total)
-                
-            # --- PREVIEW SECTIONS PREPARATION ---
-            sections = []
-            
-            # --- Combined Page (Hoja 2) ---
-            img_buf = Plotter.plot_speed_vs_time(plot_input, "Comparativa Velocidad vs Tiempo", figsize=(15, 8))
-            
-            table_data = [["Evento", "V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"]]
-            for g in sorted_groups:
-                be = best_events[g]
-                table_data.append([
-                    f"Inicio {g} km/h",
-                    f"{be['v_start']:.2f}",
-                    f"{be['v_final']:.2f}",
-                    f"{be['time_s']:.2f}",
-                    f"{be['dist_m']:.2f}",
-                    f"{be['avg_acc']:.2f}",
-                    f"{int(be['top_rpm'])}"
-                ])
-                
-            sections.append({
-                "title": "Recuperación - Resumen Mejores Eventos",
-                "images": [{'bytes': img_buf.getvalue() if hasattr(img_buf, 'getvalue') else img_buf}],
-                "table_data": table_data
-            })
-            
-            # --- Detailed Pages (Hoja 3, 4, etc) ---
-            for g in sorted_groups:
-                be = best_events[g]
-                valid_evt = {
-                    'df': be['df'],
-                    'metrics': be
-                }
-                
-                # Page impar (Mapa)
-                img_gps = Plotter.plot_gps_heatmap(valid_evt, f"Ruta GPS - Grupo {g}")
-                if img_gps:
-                    sections.append({
-                        "title": "Ubicación de la prueba",
-                        "images": [{'bytes': img_gps.getvalue() if hasattr(img_gps, 'getvalue') else img_gps}],
-                        "table_data": None
-                    })
-                
-                # Page par (Gráficas)
-                img1 = Plotter.plot_speed_vs_time([valid_evt], f"Velocidad - Grupo {g}")
-                img_rpm = None
-                if 'RPM' in be['df'].columns:
-                     img_rpm = Plotter.plot_rpm_vs_time(valid_evt, f"RPM - Grupo {g}")
-                     
-                img_acc = Plotter.plot_accel_vs_time(valid_evt, f"Aceleración - Grupo {g}")
-                
-                stats = [
-                    ["V. Inicial (km/h)", "V. Final (km/h)", "Tiempo (s)", "Distancia (m)", "Acel Prom (m/s²)", "Top RPM"],
-                    [
-                        f"{be['v_start']:.2f}",
-                        f"{be['v_final']:.2f}",
-                        f"{be['time_s']:.2f}",
-                        f"{be['dist_m']:.2f}",
-                        f"{be['avg_acc']:.2f}",
-                        f"{int(be['top_rpm'])}"
-                    ]
-                ]
-                
-                images_detalle = []
-                images_detalle.append({'bytes': img1.getvalue() if hasattr(img1, 'getvalue') else img1})
-                if img_rpm:
-                    images_detalle.append({'bytes': img_rpm.getvalue() if hasattr(img_rpm, 'getvalue') else img_rpm, 'space_after': 25})
-                images_detalle.append({'bytes': img_acc.getvalue() if hasattr(img_acc, 'getvalue') else img_acc, 'space_after': 30})
-                
-                sections.append({
-                    "title": f"Gráficas Detalle: Inicio ~{g} km/h ({pilot})",
-                    "images": images_detalle,
-                    "table_data": stats
-                })
-
-            preview_data = {
-                "type": "recovery",
-                "moto_info": moto_data,
-                "inputs": [data], # unified array pattern
-                "comments": comments,
-                "env_conditions": env_conditions,
-                "sections": sections,
-                "contexto_gps": contexto_gps,
-                "context_map": img_buf_gps_main.getvalue() if (img_buf_gps_main and hasattr(img_buf_gps_main, 'getvalue')) else img_buf_gps_main
-            }
-            
-            return True, preview_data
-            
-            
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return False, f"Error en control: {str(e)}"
 
     def evaluate_top_speed(self, data, moto_data, comments, env_conditions):
         """

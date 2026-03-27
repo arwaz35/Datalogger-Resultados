@@ -2,18 +2,18 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import os
 
-class RecoveryTest(ctk.CTkFrame):
+class AccelRecoveryTest(ctk.CTkFrame):
     def __init__(self, parent, controller, data_manager):
         super().__init__(parent)
         self.controller = controller
         self.data_manager = data_manager
         
         # Title
-        ctk.CTkLabel(self, text="Prueba de Recuperación", font=("Arial", 16, "bold")).pack(pady=10)
+        ctk.CTkLabel(self, text="Prueba de Aceleración y Recuperación", font=("Arial", 16, "bold")).pack(pady=10)
         
         # Files Inputs Area (Single File)
         self.files_frame = ctk.CTkFrame(self)
-        self.files_frame.pack(fill="x", padx=10, pady=10)
+        self.files_frame.pack(fill="x", padx=10, pady=5)
         
         # Single File Input Row
         self.add_file_row()
@@ -79,17 +79,17 @@ class RecoveryTest(ctk.CTkFrame):
                 'weight': str(weight),
                 'altura': str(altura)
             }]
-        return None
+        return []
 
     def process(self, moto_data, env_conditions, comments):
-        data = self.get_data()
+        valid_inputs = self.get_data()
         
-        if not data:
+        if not valid_inputs:
             messagebox.showerror("Error", "Debe seleccionar un archivo válido y asignar un piloto.")
             return False, "Sin entradas válidas"
             
-        if hasattr(self.controller, 'evaluate_recovery'):
-            success, result = self.controller.evaluate_recovery(data, moto_data, comments, env_conditions)
+        if hasattr(self.controller, 'evaluate_accel_recovery'):
+            success, result = self.controller.evaluate_accel_recovery(valid_inputs, moto_data, comments, env_conditions)
             if success:
                 from preview_window import PreviewWindow
                 def on_confirm(sections_data):
@@ -99,10 +99,20 @@ class RecoveryTest(ctk.CTkFrame):
                     else:
                         messagebox.showerror("Error", "Ocurrió un error al generar el PDF.")
                         
-                PreviewWindow(self, "Previsualización - Recuperación", result['sections'], on_confirm, contexto_gps=result.get('contexto_gps'), context_map=result.get('context_map'))
+                def on_excel(p_data):
+                    from excel_reporter import ExcelReporter
+                    try:
+                        r = ExcelReporter()
+                        ok, path = r.generate_accel_recovery(p_data)
+                        if ok: messagebox.showinfo("Excel Guardado", f"Generado en:\n{path}")
+                        else: messagebox.showerror("Excel Error", f"Error:\n{path}")
+                    except Exception as e:
+                        messagebox.showerror("Excel Exception", str(e))
+                        
+                PreviewWindow(self, "Previsualización - Aceleración y Recuperación", result['sections'], on_confirm, contexto_gps=result.get('contexto_gps'), context_map=result.get('context_map'), on_excel_callback=on_excel, preview_data=result)
                 return True, "Previsualización abierta"
             else:
                 messagebox.showerror("Error", f"Error en el análisis:\n{result}")
                 return False, result
         else:
-            return False, "Método de análisis de recuperación no implementado aún."
+            return False, "Método de análisis no implementado aún."

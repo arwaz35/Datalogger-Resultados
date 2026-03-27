@@ -9,9 +9,7 @@ from version import VERSION
 # Import Modules
 from modules.braking_test import BrakingTest
 from modules.climbing_test import ClimbingTest
-# from modules.acceleration_0_60 import Acceleration060Test # REPLACED/REMOVED
-from modules.acceleration_0_80 import Acceleration080Test
-from modules.recovery_test import RecoveryTest # NEW COMBINED MODULE
+from modules.accel_recovery_test import AccelRecoveryTest
 from modules.top_speed_test import TopSpeedTest # NEW MODULE
 
 ctk.set_appearance_mode("System")
@@ -154,8 +152,7 @@ class App(ctk.CTk):
         self.tests_map = {
             "Frenado": BrakingTest,
             "Ascenso": ClimbingTest,
-            "Aceleración": Acceleration080Test,
-            "Recuperación": RecoveryTest,
+            "Aceleración y Recuperación": AccelRecoveryTest,
             "Velocidad Máxima": TopSpeedTest
         }
         
